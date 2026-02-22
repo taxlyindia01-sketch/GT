@@ -206,7 +206,7 @@ class Invoice(Base):
     tenant:   Mapped[Tenant]          = relationship(back_populates="invoices")
     customer: Mapped[Customer]        = relationship(back_populates="invoices",
                                           primaryjoin="and_(Invoice.tenant_id==Customer.tenant_id, Invoice.customer_mobile==Customer.mobile)",
-                                          foreign_keys=[tenant_id, customer_mobile])
+                                          foreign_keys="[Invoice.tenant_id, Invoice.customer_mobile]")
     items:    Mapped[list[InvoiceItem]] = relationship(back_populates="invoice", cascade="all, delete-orphan")
     payments: Mapped[list[Payment]]   = relationship(back_populates="invoice")
 
@@ -262,7 +262,7 @@ class Payment(Base):
     invoice:  Mapped[Invoice|None] = relationship(back_populates="payments")
     customer: Mapped[Customer]     = relationship(back_populates="payments",
                                        primaryjoin="and_(Payment.tenant_id==Customer.tenant_id, Payment.customer_mobile==Customer.mobile)",
-                                       foreign_keys=[tenant_id, customer_mobile])
+                                       foreign_keys="[Payment.tenant_id, Payment.customer_mobile]")
 
 
 # ── Cash Register ─────────────────────────────────────────────
@@ -305,7 +305,7 @@ class Advance(Base):
 
     customer:     Mapped[Customer]               = relationship(back_populates="advances",
                                                      primaryjoin="and_(Advance.tenant_id==Customer.tenant_id, Advance.customer_mobile==Customer.mobile)",
-                                                     foreign_keys=[tenant_id, customer_mobile])
+                                                     foreign_keys="[Advance.tenant_id, Advance.customer_mobile]")
     allocations:  Mapped[list[AdvanceAllocation]] = relationship(back_populates="advance", cascade="all, delete-orphan")
 
 
