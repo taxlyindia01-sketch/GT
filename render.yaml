@@ -1,0 +1,40 @@
+# render.yaml — Render.com Blueprint
+# Deploy GoldTrader Pro v4 with one click
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ── Backend (FastAPI) ───────────────────────────────────────
+  - type: web
+    name: goldtrader-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goldtrader-db
+          property: connectionString
+        # Render gives postgresql:// but we need postgresql+asyncpg://
+        # Use the transform below or set manually
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TAXLY_ADMIN_USERNAME
+        value: Taxly
+      - key: ADMIN_PASSWORD_HASH
+        value: "$2b$12$ZhJuQ.tZKyxLgVT/GqrzBeX20BFpN0sFKhzMBPUW0HbtnYKR8Mlsi"
+      - key: TRIAL_DAYS
+        value: "10"
+      - key: FRONTEND_URL
+        value: "*"
+      - key: DEBUG
+        value: "False"
+    healthCheckPath: /health
+
+databases:
+  # ── PostgreSQL ──────────────────────────────────────────────
+  - name: goldtrader-db
+    databaseName: goldtrader_pro
+    user: goldtrader
+    plan: free
