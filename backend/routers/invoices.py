@@ -10,7 +10,7 @@ from sqlalchemy import select, func
 
 from database import get_db
 from models import Invoice, InvoiceItem, Customer, InvoiceStatus, PaymentStatus
-from utils.auth import get_current_user_payload
+from utils.auth import get_tenant_payload as get_current_user_payload
 from utils.business import (
     calculate_gst, calculate_tcs, generate_invoice_no,
     is_sft_flagged, pan_is_mandatory

@@ -17,7 +17,7 @@ from models import (
     Invoice, InvoiceItem, Customer, Payment,
     CashEntry, Advance, StockItem, StockTransaction
 )
-from utils.auth import get_current_user_payload
+from utils.auth import get_tenant_payload as get_current_user_payload
 from utils.business import current_fy, SFT_THRESHOLD
 
 router = APIRouter()

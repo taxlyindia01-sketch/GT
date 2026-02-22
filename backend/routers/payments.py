@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from database import get_db
 from models import Invoice, Payment, Advance, AdvanceAllocation, Customer, PaymentStatus, CashEntry, CashEntryType
-from utils.auth import get_current_user_payload
+from utils.auth import get_tenant_payload as get_current_user_payload
 from utils.business import is_sft_flagged, SFT_THRESHOLD
 
 router = APIRouter()
