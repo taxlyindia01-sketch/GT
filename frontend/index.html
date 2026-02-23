@@ -373,8 +373,8 @@ select.inp option{background:var(--bg2);}
       <a class="nav-link" onclick="if(!document.getElementById('s-landing').classList.contains('show')){goTo('s-landing');setTimeout(()=>scrollToSection('sec-features'),150);}else{scrollToSection('sec-features');}closeMobNav()">Features</a>
       <a class="nav-link" onclick="if(!document.getElementById('s-landing').classList.contains('show')){goTo('s-landing');setTimeout(()=>scrollToSection('sec-pricing'),150);}else{scrollToSection('sec-pricing');}closeMobNav()">Pricing</a>
       <a class="nav-link" onclick="if(!document.getElementById('s-landing').classList.contains('show')){goTo('s-landing');setTimeout(()=>scrollToSection('sec-support'),150);}else{scrollToSection('sec-support');}closeMobNav()">Support</a>
-      <a class="nav-link nav-demo" onclick="openDemoSignup()">🚀 Free Demo</a>
-      <a class="nav-link nav-cta" onclick="openLoginScreen()">Login →</a>
+      <a class="nav-link nav-demo" onclick="goTo('s-crm-login');setTimeout(()=>loginTab('su'),50)">🚀 Free Demo</a>
+      <a class="nav-link nav-cta" onclick="goTo('s-crm-login')">Login →</a>
     </div>
   </nav>
   <section class="land-hero" style="position:relative;z-index:1;">
@@ -383,7 +383,7 @@ select.inp option{background:var(--bg2);}
       <h1 class="hero-h1">Manage Your<br/><span class="hero-accent">Gold Business</span><br/>With Precision</h1>
       <p class="hero-p">GST-ready invoicing · FIFO Inventory · TCS &amp; SFT Compliance · Real-time Cash Flow · Multi-tenant &amp; Mobile-ready</p>
       <div class="hero-btns">
-        <button class="btn-hero-primary" onclick="openDemoSignup()">🚀 Start Free 10-Day Demo</button>
+        <button class="btn-hero-primary" onclick="goTo('s-crm-login');setTimeout(()=>loginTab('su'),50)">🚀 Start Free 10-Day Demo</button>
         <button class="btn-hero-secondary" onclick="scrollToSection('sec-pricing')">View Pricing ↓</button>
       </div>
       <div class="hero-stats"><div class="stat"><span class="stat-n">500+</span><span class="stat-l">Jewellers</span></div><div class="stat-div"></div><div class="stat"><span class="stat-n">₹200Cr+</span><span class="stat-l">Invoiced</span></div><div class="stat-div"></div><div class="stat"><span class="stat-n">100%</span><span class="stat-l">GST Compliant</span></div></div>
@@ -459,7 +459,7 @@ select.inp option{background:var(--bg2);}
           <li>✅ Google Sign-In</li>
           <li>✅ Email Support (Mon–Sat)</li>
         </ul>
-        <button class="btn-pricing" onclick="openDemoSignup()">🚀 Start Free 10-Day Demo</button>
+        <button class="btn-pricing" onclick="goTo('s-crm-login');setTimeout(()=>loginTab('su'),50)">🚀 Start Free 10-Day Demo</button>
         <p style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;">No credit card required</p>
       </div>
       <div class="pricing-faq">
@@ -484,7 +484,7 @@ select.inp option{background:var(--bg2);}
         <div class="support-detail-row"><span class="sd-icon">✉️</span><a href="mailto:support@goldtraderpro.in" style="color:var(--gold2);">support@goldtraderpro.in</a></div>
         <div class="support-detail-row"><span class="sd-icon">🌐</span><a href="#" style="color:var(--gold2);">www.goldtraderpro.in</a></div>
         <div class="support-hours"><div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Support Hours</div><div style="font-size:13px;color:var(--text);">Monday – Saturday: 10:00 AM – 6:00 PM IST</div></div>
-        <button class="btn-hero-primary" style="margin-top:16px;width:100%;justify-content:center;" onclick="openSupportModal()">📩 Raise a Support Ticket</button>
+        <button class="btn-hero-primary" style="margin-top:16px;width:100%;justify-content:center;" onclick="alert('Support request sent! We will contact you within 24 hours.')">📩 Raise a Support Ticket</button>
       </div>
       <div class="support-image-block">
         <svg viewBox="0 0 430 285" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;border-radius:14px;background:var(--bg1);border:1px solid var(--border);">
@@ -521,7 +521,7 @@ select.inp option{background:var(--bg2);}
   <footer class="land-footer" style="position:relative;z-index:1;">
     <div class="footer-top">
       <div class="footer-brand"><div class="logo-mark" style="width:30px;height:30px;font-size:10px;">GT</div><div style="margin-left:9px;"><div class="logo-name" style="font-size:14px;">GoldTrader Pro</div><div style="font-size:10px;color:var(--muted);">by Taxly India Pvt Ltd</div></div></div>
-      <div class="footer-links"><span onclick="scrollToSection('sec-features')" class="fl">Features</span><span onclick="scrollToSection('sec-pricing')" class="fl">Pricing</span><span onclick="scrollToSection('sec-support')" class="fl">Support</span><span onclick="openLoginScreen()" class="fl">Login</span><span onclick="openLoginScreen()" class="fl">Sign Up</span></div>
+      <div class="footer-links"><span onclick="scrollToSection('sec-features')" class="fl">Features</span><span onclick="scrollToSection('sec-pricing')" class="fl">Pricing</span><span onclick="scrollToSection('sec-support')" class="fl">Support</span><span onclick="goTo('s-crm-login')" class="fl">Login</span><span onclick="goTo('s-crm-login')" class="fl">Sign Up</span></div>
       <div class="footer-url" style="font-family:var(--mono);color:var(--gold2);font-size:12px;">🌐 www.goldtraderpro.in</div>
     </div>
     <div class="footer-bottom" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -545,480 +545,7 @@ select.inp option{background:var(--bg2);}
       <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="adminLogin()">🔐 Sign In to Admin Panel</button>
       <div class="back-link"><button onclick="goTo('s-landing')">← Back to Home</button></div>
     </div>
-  
-
-<div id="s-crm-login" class="screen">
-  <div class="auth-wrap">
-    <div class="auth-glow1"></div><div class="auth-glow2"></div>
-    <div class="auth-card">
-      <div class="auth-logo"><div class="auth-logo-mark">GT</div><div class="auth-title">GoldTrader Pro</div><div class="auth-sub">Jewellery CRM &amp; Invoicing System</div></div>
-      <div class="tabs-bar">
-        <button class="tbn active" id="tb-pw" onclick="loginTab('pw')">🔑 Password</button>
-        <button class="tbn" id="tb-g" onclick="loginTab('g')">🔵 Google</button>
-        <button class="tbn" id="tb-su" onclick="loginTab('su')">✍️ Sign Up</button>
-      </div>
-      <!-- Password tab -->
-      <div id="lt-pw">
-        <div id="login-err" class="alert al-r" style="display:none;">❌ Invalid credentials. Try: rajesh_admin / admin123</div>
-        <div class="fg"><label class="lbl">Username or Mobile</label><input class="inp" id="login-u" placeholder="Username / mobile no." value="rajesh_admin"/></div>
-        <div class="fg"><label class="lbl">Password</label><input class="inp" id="login-p" type="password" value="admin123"/></div>
-        <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="doLogin()">Sign In →</button>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px;">Demo credentials: rajesh_admin / admin123</p>
-      </div>
-      <!-- Google tab - Full signup with 10-day free trial -->
-      <div id="lt-g" style="display:none;">
-        <!-- State A: Initial Google button (not yet clicked) -->
-        <div id="g-initial">
-          <div class="alert al-b" style="margin-bottom:12px;font-size:12px;">
-            🚀 <strong>Sign up with Google</strong> — Instant 10-day free access, no admin approval needed.<br>
-            <span style="opacity:.7;">After 10 days, admin approval required to continue.</span>
-          </div>
-          <div class="google-btn" onclick="googleOAuthClick()">
-            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-            <span style="font-size:14px;font-weight:600;">Continue with Google</span>
-          </div>
-          <div style="text-align:center;font-size:11px;color:var(--muted);margin-top:8px;">Already have an account? <span onclick="loginTab('pw')" style="color:var(--gold2);cursor:pointer;text-decoration:underline;">Sign in with password</span></div>
-        </div>
-        <!-- State B: Fill details after Google OAuth mock -->
-        <div id="g-details" style="display:none;">
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;margin-bottom:14px;">
-            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#4285F4,#34A853);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff;font-weight:700;" id="g-avatar-letter">?</div>
-            <div><div style="font-size:13px;font-weight:600;color:var(--text);" id="g-display-name">Google User</div><div style="font-size:11px;color:var(--gold2);" id="g-display-email"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c4b1b7a1b684a3a9a5ada8eaa7aba9">[email&#160;protected]</a></div></div>
-            <div style="margin-left:auto;font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;padding:3px 8px;border-radius:12px;font-weight:600;">✓ Verified</div>
-          </div>
-          <div id="g-err" class="alert al-r" style="display:none;margin-bottom:10px;"></div>
-          <div class="fg" style="margin-bottom:10px;">
-            <label class="lbl">Company / Jewellery Business Name <span class="req">*</span></label>
-            <input class="inp" id="g-company" placeholder="e.g. Raj Jewellers Pvt Ltd"/>
-          </div>
-          <div class="fg" style="margin-bottom:10px;">
-            <label class="lbl">Mobile Number <span class="req">*</span></label>
-            <input class="inp" id="g-mobile" placeholder="10-digit mobile" maxlength="10" type="tel"/>
-          </div>
-          <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="googleSignupSubmit()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="margin-right:6px;"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.11 18.1.128 18.12a20.026 20.026 0 0 0 5.993 3.03.077.077 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.201 13.201 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" fill="#5865F2"/></svg>
-            🚀 Start 10-Day Free Trial
-          </button>
-          <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Full access for 10 days. After trial, admin approval unlocks continued access.</p>
-        </div>
-        <!-- State C: Trial active - access CRM -->
-        <div id="g-trial-active" style="display:none;">
-          <div class="alert al-g" style="margin-bottom:12px;">
-            ✅ <strong>Google account connected!</strong> Your 10-day free trial is active.
-          </div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-size:12px;color:var(--muted);">Trial expires</span>
-              <span style="font-size:12px;font-weight:700;color:#22c55e;" id="g-expire-date">—</span>
-            </div>
-            <div style="height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;">
-              <div id="g-trial-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#22c55e,#86efac);border-radius:3px;transition:width .5s;"></div>
-            </div>
-            <div style="font-size:10px;color:var(--muted);margin-top:5px;text-align:right;" id="g-days-left">10 days remaining</div>
-          </div>
-          <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="googleEnterCRM()">Enter CRM →</button>
-        </div>
-        <!-- State D: Trial expired - pending approval -->
-        <div id="g-trial-expired" style="display:none;">
-          <div class="alert al-r" style="margin-bottom:12px;">
-            ⏰ <strong>Trial period ended.</strong> Admin approval required to continue.
-          </div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:14px;">
-            <div style="font-size:32px;margin-bottom:8px;">⏳</div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px);">Approval Pending</div>
-            <div style="font-size:12px;color:var(--muted);">Your 10-day trial has ended. The admin has been notified and will review your request shortly.</div>
-          </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-gh" style="flex:1;justify-content:center;" onclick="loginTab('pw')">← Back to Login</button>
-            <button class="btn btn-g" style="flex:1;justify-content:center;" onclick="checkGoogleApproval()">🔄 Check Status</button>
-          </div>
-        </div>
-      </div>
-      <!-- Sign up tab -->
-      <div id="lt-su" style="display:none;">
-        <div class="alert al-b" style="margin-bottom:10px;">🚀 <strong>Free 10-day demo</strong> — No credit card, no admin approval needed.</div>
-        <div id="su-err" class="alert al-r" style="display:none;"></div>
-        <div class="fr2"><div class="fg"><label class="lbl">Your Name <span class="req">*</span></label><input class="inp" id="su-name" placeholder="Full name"/></div><div class="fg"><label class="lbl">Mobile <span class="req">*</span></label><input class="inp" id="su-mob" placeholder="10-digit" maxlength="10"/></div></div>
-        <div class="fg"><label class="lbl">Company Name <span class="req">*</span></label><input class="inp" id="su-co" placeholder="Your jewellery business"/></div>
-        <div class="fg"><label class="lbl">Password <span class="req">*</span></label><input class="inp" id="su-pwd" type="password" placeholder="Minimum 8 characters"/></div>
-        <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="signupDemo()">🚀 Start Free Demo →</button>
-        <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">10 days free. All features unlocked.</p>
-      </div>
-      <div class="back-link"><button onclick="goTo('s-landing')">← Back to Home</button></div>
-    </div>
   </div>
-</div>
-
-<!-- ═══════════════════════════════ CRM MAIN ═════════════════════════════ -->
-
-
-<div id="s-crm" class="screen">
-  <!-- Mobile topbar -->
-  <div class="crm-topbar" id="crm-topbar" style="display:none;">
-    <div style="display:flex;align-items:center;gap:8px;"><div class="logo-mark" style="width:28px;height:28px;font-size:10px;">GT</div><span style="font-family:var(--display);font-size:14px;color:var(--gold2);">GoldTrader Pro</span></div>
-    <button class="hamburger crm-topbar-ham" onclick="document.getElementById('crm-sb').classList.toggle('mob-open')">☰</button>
-  </div>
-
-  <!-- Sidebar -->
-  <aside class="crm-sb" id="crm-sb">
-    <div class="sb-brand"><div class="logo-mark" style="width:30px;height:30px;font-size:10px;">GT</div><div><div class="sb-brand-name">GoldTrader Pro</div><div class="sb-brand-sub">Jewellery CRM</div></div></div>
-    <div class="sb-user"><div class="su-l">Signed in as</div><div class="su-n" id="sb-user-name">rajesh_admin</div><div class="su-r" id="sb-user-role">admin · Raj Jewellers</div></div>
-    <nav class="sb-nav">
-      <div class="ni act" id="n-dashboard" onclick="setPage('dashboard')"><span class="ic">📊</span>Dashboard</div>
-      <div class="ni" id="n-invoice" onclick="setPage('invoice')"><span class="ic">🧾</span>Create Invoice</div>
-      <!-- Reports submenu -->
-      <div class="ni" id="n-reports" onclick="toggleSubmenu('sm-reports','n-reports')"><span class="ic">📁</span>Reports &amp; Register<span class="submenu-arrow">›</span></div>
-      <div class="submenu" id="sm-reports">
-        <div class="subni" id="sn-sales" onclick="setPage('sales')">🛒 Sales Register</div>
-        <div class="subni" id="sn-payments" onclick="setPage('payments')">💳 Payment Register</div>
-        <div class="subni" id="sn-cash" onclick="setPage('cash')">🏦 Cash Register</div>
-        <div class="subni" id="sn-advances" onclick="setPage('advances')">💰 Advances</div>
-        <div class="subni" id="sn-outstanding" onclick="setPage('outstanding')">📈 Outstanding</div>
-        <div class="subni" id="sn-tcs" onclick="setPage('tcs')">🔖 TCS Register</div>
-        <div class="subni" id="sn-sft" onclick="setPage('sft')">🔍 SFT Register</div>
-        <div class="subni" id="sn-account" onclick="setPage('account')">📒 Account Register</div>
-        <div class="subni" id="sn-gst" onclick="setPage('gstr')">🧾 GST Register</div>
-        <div class="subni" id="sn-export" onclick="setPage('export')">📥 Download Backup</div>
-      </div>
-      <div class="ni" id="n-customers" onclick="setPage('customers')"><span class="ic">👥</span>Customer Master</div>
-      <div class="ni" id="n-stock" onclick="setPage('stock')"><span class="ic">📦</span>Stock Master</div>
-      <div class="ni" id="n-users" onclick="setPage('users')"><span class="ic">🔒</span>User Management</div>
-      <div class="ni" id="n-company" onclick="setPage('company')"><span class="ic">🏢</span>Company Settings</div>
-    </nav>
-    <div class="sb-footer">
-      <div class="ni" onclick="openSupportModal()"><span class="ic">🎫</span>Support Ticket</div>
-      <div class="ni" style="color:var(--red);" onclick="goTo('s-crm-login')"><span class="ic">🔓</span>Logout</div>
-      <div style="text-align:center;font-size:9px;color:var(--muted2);padding:4px 0 2px;">www.goldtraderpro.in</div>
-    </div>
-  </aside>
-
-  <!-- ────────── PAGES ────────── -->
-  <div class="crm-main" id="crm-main">
-    <!-- Trial banner (shown only for Google trial users) -->
-    <div id="trial-banner" style="display:none;background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.06));border-bottom:1px solid rgba(251,191,36,.3);padding:8px 20px;display:none;align-items:center;gap:12px;flex-wrap:wrap;">
-      <div style="display:flex;align-items:center;gap:8px;flex:1;">
-        <span style="font-size:18px;">🟡</span>
-        <div>
-          <span style="font-size:12px;font-weight:700;color:#fbbf24;">Free Trial Active</span>
-          <span style="font-size:12px;color:var(--muted);margin-left:8px;" id="trial-banner-text">10 days remaining</span>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:120px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
-          <div id="trial-banner-bar" style="height:100%;width:100%;background:#22c55e;border-radius:3px;"></div>
-        </div>
-        <span style="font-size:11px;color:var(--muted);" id="trial-banner-expires">Expires: —</span>
-        <button class="btn btn-sm" style="background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.4);font-size:11px;padding:3px 10px;" onclick="toast('Contact admin@goldtraderpro.in to continue after trial.','success')">Upgrade →</button>
-      </div>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div class="crm-pg show" id="pg-dashboard">
-      <div class="ph"><div><div class="pt">Dashboard</div><div class="ps">Welcome, rajesh_admin · Raj Jewellers Pvt Ltd</div></div><button class="btn btn-g" onclick="setPage('invoice')">+ New Invoice</button></div>
-      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);">
-        <div class="kpi"><div class="kpi-top"><span>🧾</span><span class="pill pg">Active</span></div><div class="kv" id="db-inv">284</div><div class="kl">Total Invoices</div></div>
-        <div class="kpi"><div class="kpi-top"><span>💰</span><span class="pill pv">Lifetime</span></div><div class="kv" id="db-rev">₹42.6L</div><div class="kl">Revenue</div></div>
-        <div class="kpi"><div class="kpi-top"><span>⚠️</span><span class="pill pr">Pending</span></div><div class="kv" id="db-ost">₹3.24L</div><div class="kl">Outstanding</div></div>
-        <div class="kpi"><div class="kpi-top"><span>🏦</span><span class="pill pv">Today</span></div><div class="kv" id="db-cash" style="color:var(--grn);">₹28,450</div><div class="kl">Cash in Hand</div></div>
-      </div>
-      <div class="g2" style="margin-bottom:14px;">
-        <div class="card cp"><div class="ct">Monthly Revenue</div><div class="bchart"><div class="bcc"><div class="bv">5.2</div><div class="bb" style="height:52px"></div><div class="bl">Sep</div></div><div class="bcc"><div class="bv">6.8</div><div class="bb" style="height:68px"></div><div class="bl">Oct</div></div><div class="bcc"><div class="bv">7.4</div><div class="bb" style="height:74px"></div><div class="bl">Nov</div></div><div class="bcc"><div class="bv">9.1</div><div class="bb" style="height:91px"></div><div class="bl">Dec</div></div><div class="bcc"><div class="bv">6.3</div><div class="bb" style="height:63px"></div><div class="bl">Jan</div></div><div class="bcc"><div class="bv">7.8</div><div class="bb" style="height:78px"></div><div class="bl">Feb</div></div></div></div>
-        <div class="card cp"><div class="ct">Quick Stats</div><div style="font-size:12px;"><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">Unpaid Invoices</span><span style="color:var(--red);font-weight:700;">18</span></div><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">TCS Collected (FY)</span><span id="db-tcs" style="color:var(--gold2);font-weight:700;">₹24,500</span></div><div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);"><span style="color:var(--muted);">SFT Flagged Customers</span><span id="db-sft" style="color:var(--red);font-weight:700;">3</span></div><div style="display:flex;justify-content:space-between;padding:7px 0;"><span style="color:var(--muted);">Gold Stock</span><span id="db-gold" style="color:var(--gold2);font-weight:700;">770.5 grm</span></div></div></div>
-      </div>
-      <div class="card"><div class="cp" style="padding-bottom:0;display:flex;justify-content:space-between;align-items:center;"><div class="ct" style="margin:0;">Recent Invoices</div><span style="color:var(--gold2);font-size:12px;cursor:pointer;" onclick="setPage('sales')">View all →</span></div>
-        <div class="tbl-wrap"><table class="tbl" style="margin-top:8px;"><thead><tr><th>Invoice</th><th>Customer</th><th>Mobile</th><th class="r">Amount</th><th>TCS</th><th>Status</th></tr></thead><tbody id="db-inv-tbody">
-          <tr><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9876543210</td><td style="text-align:right;font-weight:700;">₹1,21,540</td><td>—</td><td><span class="pill pv">Paid</span></td></tr>
-          <tr><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="text-align:right;font-weight:700;">₹5,24,500</td><td><span class="pill pr">₹5,000</span></td><td><span class="pill pp">Partial</span></td></tr>
-          <tr><td><span class="mn" onclick="openPdf('INV-1-0282','Meena Devi','9911223344','₹28,750',false)">INV-1-0282</span></td><td><span class="cn" onclick="openLedger('Meena Devi','9911223344')">Meena Devi</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9911223344</td><td style="text-align:right;font-weight:700;">₹28,750</td><td>—</td><td><span class="pill pr">Unpaid</span></td></tr>
-        </tbody></table></div>
-      </div>
-    </div>
-
-    <!-- CREATE INVOICE -->
-    <div class="crm-pg" id="pg-invoice">
-      <div class="ph"><div><div class="pt">Create Invoice</div><div class="ps">Mobile: primary key · TCS auto-applied on cash &gt;₹5L</div></div><span style="font-family:var(--mono);font-size:11px;color:var(--muted);padding:5px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;">Auto-numbered</span></div>
-      <div id="inv-ok" class="alert al-g" style="display:none;">✅ Invoice saved!</div>
-      <div id="tcs-alert" class="tcs-warn" style="display:none;">⚠️ Cash receipt exceeds ₹5,00,000 — 1% TCS of ₹<span id="tcs-amt">0</span> will be added to this invoice.</div>
-      <div id="pan-alert" class="pan-warn" style="display:none;">⚠️ Customer's total cash receipts in this FY exceed ₹2,00,000 — <strong>PAN is mandatory.</strong></div>
-      <div class="g2" style="margin-bottom:12px;">
-        <div class="card cp">
-          <div class="ct">📋 Invoice Details</div>
-          <div class="fr2"><div class="fg"><label class="lbl">Date *</label><input class="inp" id="inv-date" type="date" value="2026-02-21"/></div><div class="fg"><label class="lbl">Payment Mode</label><select class="inp" id="inv-pay-mode" onchange="checkTCS()"><option>Cash</option><option>UPI</option><option>Card</option><option>NEFT/RTGS</option><option>Cheque</option></select></div></div>
-          <div class="fr2"><div class="fg"><label class="lbl">GST Rate (%)</label><input class="inp" id="inv-gst" value="3" oninput="recalcInv()"/></div><div class="fg"><label class="lbl">GST Type</label><select class="inp"><option>CGST+SGST</option><option>IGST</option><option>Exempt</option></select></div></div>
-        </div>
-        <div class="card cp">
-          <div class="ct">👤 Customer (Mobile = Primary Key)</div>
-          <div class="fg"><label class="lbl">Search Existing (by mobile)</label><select class="inp" onchange="fillCustomer(this.value)"><option value="">— Search or enter below —</option><option value="9876543210">9876543210 — Priya Sharma</option><option value="9812345678">9812345678 — Arun Kumar</option><option value="9911223344">9911223344 — Meena Devi</option></select></div>
-          <div class="fr2"><div class="fg"><label class="lbl">Mobile No. <span class="req">*</span> (Primary Key)</label><input class="inp" id="inv-mob" placeholder="10-digit mobile" oninput="checkPAN()"/></div><div class="fg"><label class="lbl">Customer Name <span class="req">*</span></label><input class="inp" id="inv-cname" placeholder="Full name"/></div></div>
-          <div class="fr2"><div class="fg"><label class="lbl">State (GST) <span class="req">*</span></label><select class="inp" id="inv-state"><option value="">Select State</option><option>Delhi</option><option>Maharashtra</option><option>Karnataka</option><option>Gujarat</option><option>Rajasthan</option><option>Tamil Nadu</option><option>West Bengal</option><option>Uttar Pradesh</option><option>Telangana</option><option>Haryana</option><option>Punjab</option><option>Madhya Pradesh</option><option>Kerala</option><option>Andhra Pradesh</option><option>Bihar</option></select></div><div class="fg"><label class="lbl">PAN <span id="pan-lbl-star"></span></label><input class="inp" id="inv-pan" placeholder="ABCDE1234F (optional)" oninput="this.value=this.value.toUpperCase()"/></div></div>
-          <div class="fg"><label class="lbl">GSTIN</label><input class="inp" placeholder="Optional"/></div>
-        </div>
-      </div>
-      <div class="card cp" style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;"><div class="ct" style="margin:0;">📦 Line Items</div><button class="btn btn-gh btn-sm" onclick="addInvRow()">+ Add Item</button></div>
-        <div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;">
-          <thead><tr style="border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;"><th style="padding:5px 7px;">Category</th><th style="padding:5px 7px;">Purity</th><th style="padding:5px 7px;">Description</th><th style="padding:5px 7px;">HSN</th><th style="padding:5px 7px;">Qty</th><th style="padding:5px 7px;">Unit</th><th style="padding:5px 7px;">Rate(₹)</th><th style="padding:5px 7px;">Making(₹)</th><th style="padding:5px 7px;text-align:right;">Amount</th><th></th></tr></thead>
-          <tbody id="inv-rows">
-            <tr><td style="padding:4px 5px;"><select class="inp" style="padding:5px;font-size:12px;" onchange="updatePurity(this)"><option>Gold</option><option>Silver</option><option>Diamond</option><option>Polish Charges</option></select></td>
-            <td style="padding:4px 5px;"><select class="inp purity-sel" style="padding:5px;font-size:12px;width:70px;"><option>22K</option><option>24K</option><option>20K</option><option>18K</option><option>14K</option></select></td>
-            <td style="padding:4px 5px;"><input class="inp" style="min-width:100px;padding:5px;font-size:12px;" value="Gold Necklace Set"/></td>
-            <td style="padding:4px 5px;"><input class="inp" style="width:58px;padding:5px;font-size:12px;" value="7113"/></td>
-            <td style="padding:4px 5px;"><input class="inp" style="width:50px;padding:5px;font-size:12px;" value="12" oninput="recalcInv()"/></td>
-            <td style="padding:4px 5px;"><select class="inp" style="width:52px;padding:5px;font-size:12px;"><option>grm</option><option>crt</option></select></td>
-            <td style="padding:4px 5px;"><input class="inp" style="width:68px;padding:5px;font-size:12px;" value="5800" oninput="recalcInv()"/></td>
-            <td style="padding:4px 5px;"><input class="inp" style="width:68px;padding:5px;font-size:12px;" value="1200" oninput="recalcInv()"/></td>
-            <td style="padding:4px 5px;text-align:right;color:var(--gold2);font-weight:700;" id="row-amt-1">₹70,800</td>
-            <td style="padding:4px 5px;"><button style="background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:0 4px;" onclick="this.closest('tr').remove();recalcInv()">×</button></td></tr>
-          </tbody>
-        </table></div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;">
-        <div style="background:var(--bg1);border:1px solid var(--border);border-radius:var(--r2);padding:14px;width:100%;max-width:280px;">
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--muted);">Subtotal</span><span id="inv-sub">₹70,800</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--muted);">CGST 1.5%</span><span id="inv-cgst">₹1,062</span></div>
-          <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--muted);">SGST 1.5%</span><span id="inv-sgst">₹1,062</span></div>
-          <div id="inv-tcs-row" style="display:none;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--red);"><span>TCS @1%</span><span id="inv-tcs-val">₹0</span></div>
-          <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:16px;font-weight:900;border-top:1px solid var(--border2);margin-top:3px;"><span>Grand Total</span><span style="color:var(--gold2);" id="inv-total">₹72,924</span></div>
-          <button class="btn btn-g" style="width:100%;justify-content:center;margin-top:10px;" id="btn-save-inv" onclick="saveInvoice()">💾 Save Invoice</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SALES REGISTER -->
-    <div class="crm-pg" id="pg-sales">
-      <div class="ph"><div><div class="pt">Sales Register</div><div class="ps">Invoice-wise sales with HSN and TCS</div></div><button class="btn btn-g btn-sm" onclick="exportExcel('sales')">📤 Export Excel</button></div>
-      <div class="rfbar"><div><label class="lbl">Period</label><select class="inp" style="width:160px;" onchange="filterPeriod(this.value,'sales')"><option value="cm">Current Month</option><option value="pm">Previous Month</option><option value="fy">Current FY</option><option value="custom">Custom Range</option></select></div><div id="rng-sales" style="display:none;display:flex;gap:8px;flex-wrap:wrap;"><div><label class="lbl">From</label><input class="inp" type="date" style="width:140px;" value="2026-02-01"/></div><div><label class="lbl">To</label><input class="inp" type="date" style="width:140px;" value="2026-02-21"/></div></div><input class="inp" style="width:200px;" placeholder="🔍 Search…" oninput="filterRows('tb-sales',this.value)"/><button class="btn btn-g btn-sm" onclick="renderSales();toast('Filter applied','success')">Apply</button></div>
-      <div class="g3" style="margin-bottom:14px;"><div class="kpi"><div class="kv" style="font-size:18px;">₹7,84,200</div><div class="kl">Subtotal</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--gold2);">₹23,526</div><div class="kl">GST Collected</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--grn);">₹8,07,726</div><div class="kl">Grand Total</div></div></div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice No.</th><th>Date</th><th>Customer</th><th>Mobile</th><th>HSN</th><th class="r">Subtotal</th><th class="r">GST</th><th class="r">TCS</th><th class="r">Grand Total</th><th>Pay Mode</th></tr></thead>
-        <tbody id="tb-sales">
-          <tr data-s="inv-1-0284 priya 9876543210"><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="color:var(--muted)">2026-02-20</td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9876543210</td><td style="font-family:var(--mono);color:var(--muted);">7113</td><td style="text-align:right;color:var(--muted);">₹1,18,000</td><td style="text-align:right;color:var(--gold2);">₹3,540</td><td style="text-align:right;">—</td><td style="text-align:right;font-weight:700;">₹1,21,540</td><td><span class="pill pb">UPI</span></td></tr>
-          <tr data-s="inv-1-0283 arun 9812345678"><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td style="color:var(--muted)">2026-02-19</td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="font-family:var(--mono);color:var(--muted);">7113</td><td style="text-align:right;color:var(--muted);">₹5,09,226</td><td style="text-align:right;color:var(--gold2);">₹15,277</td><td style="text-align:right;color:var(--red);font-weight:700;">₹5,000</td><td style="text-align:right;font-weight:700;">₹5,29,503</td><td><span class="pill pv">Cash</span></td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- PAYMENT REGISTER -->
-    <div class="crm-pg" id="pg-payments">
-      <div class="ph"><div><div class="pt">Payment Register</div><div class="ps">All payment records by mobile</div></div><div class="ph-actions"><button class="btn btn-g btn-sm" onclick="openModal('m-pay')">+ Record Payment</button><button class="btn btn-gh btn-sm" onclick="exportExcel('payments')">📤 Export</button></div></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select><input class="inp" style="width:200px;" placeholder="🔍 Search by name/mobile…" oninput="filterRows('tb-pay',this.value)"/><button class="btn btn-g btn-sm" onclick="renderPayments();toast('Filter applied','success')">Apply</button></div>
-      <div class="g3" style="margin-bottom:14px;"><div class="kpi"><div class="kv" style="font-size:18px;color:var(--grn);">₹39.3L</div><div class="kl">Total Collected</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--gold2);">₹1.2L</div><div class="kl">Advances Held</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--red);">₹3.24L</div><div class="kl">Outstanding</div></div></div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice</th><th>Customer</th><th>Mobile</th><th class="r">Amount</th><th>Date</th><th>Mode</th><th>Note</th></tr></thead>
-        <tbody id="tb-pay">
-          <tr data-s="inv-1-0284 priya 9876543210"><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9876543210</td><td style="text-align:right;color:var(--grn);font-weight:700;">₹1,21,540</td><td style="color:var(--muted);">2026-02-20</td><td><span class="pill pb">UPI</span></td><td style="color:var(--muted2);font-size:11px;">Full payment</td></tr>
-          <tr data-s="inv-1-0283 arun 9812345678"><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="text-align:right;color:var(--grn);font-weight:700;">₹50,000</td><td style="color:var(--muted);">2026-02-19</td><td><span class="pill pv">Cash</span></td><td style="color:var(--muted2);font-size:11px;">Part payment</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- CASH REGISTER -->
-    <div class="crm-pg" id="pg-cash">
-      <div class="ph"><div><div class="pt">Cash Register</div><div class="ps">Cash collected FY · Cash deposited FY · Cash on hand</div></div><div class="ph-actions"><button class="btn btn-g btn-sm" onclick="openModal('m-cash')">+ New Entry</button><button class="btn btn-gh btn-sm" onclick="exportExcel('cash')">📤 Export</button></div></div>
-      <div class="rfbar"><select class="inp" style="width:150px;" onchange="filterPeriod(this.value,'cash')"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select><div><label class="lbl" style="display:inline;margin-right:6px;">View as of:</label><input class="inp" type="date" style="width:150px;" value="2026-02-21"/></div><input class="inp" style="width:180px;" placeholder="🔍 Search…" oninput="filterRows('tb-cash',this.value)"/><button class="btn btn-g btn-sm" onclick="renderCash();toast('Filter applied','success')">Apply</button></div>
-      <div class="g3" style="margin-bottom:14px;">
-        <div class="kpi" style="border-color:rgba(34,197,94,.3);"><div class="kpi-top"><span>💵</span><span class="pill pv">FY 2025-26</span></div><div class="kv" style="color:var(--grn);">₹8,45,600</div><div class="kl">Cash Collected (FY)</div></div>
-        <div class="kpi" style="border-color:rgba(56,189,248,.3);"><div class="kpi-top"><span>🏦</span><span class="pill pb">FY 2025-26</span></div><div class="kv" style="color:var(--blue);">₹7,50,000</div><div class="kl">Cash Deposited in Bank (FY)</div></div>
-        <div class="kpi" style="border-color:rgba(232,184,64,.3);"><div class="kpi-top"><span>💰</span><span class="pill pg">Till Date</span></div><div class="kv" style="color:var(--gold2);">₹28,450</div><div class="kl">Cash on Hand</div></div>
-      </div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Invoice/Ref</th><th class="r">Cash In</th><th class="r">Cash Out</th><th class="r">Bank In</th><th class="r">Balance</th></tr></thead>
-        <tbody id="tb-cash">
-          <tr data-s="priya 9876543210 cash receipt"><td style="color:var(--muted)">2026-02-21</td><td><span class="pill pv">Cash Receipt</span></td><td>Priya Sharma · 9876543210</td><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="text-align:right;color:var(--grn);font-weight:700;">₹50,000</td><td>—</td><td>—</td><td style="text-align:right;font-weight:700;">₹78,450</td></tr>
-          <tr data-s="cash to bank hdfc"><td style="color:var(--muted)">2026-02-21</td><td><span class="pill pb">Cash→Bank</span></td><td>Deposited to HDFC Bank</td><td style="color:var(--muted2);font-size:11px;">UTR 2025021100234</td><td>—</td><td style="text-align:right;color:var(--red);font-weight:700;">₹50,000</td><td style="text-align:right;color:var(--blue);font-weight:700;">₹50,000</td><td style="text-align:right;font-weight:700;">₹28,450</td></tr>
-          <tr data-s="shop rent cash expense"><td style="color:var(--muted)">2026-02-20</td><td><span class="pill pr">Cash Expense</span></td><td>Shop rent</td><td style="color:var(--muted2);">—</td><td>—</td><td style="text-align:right;color:var(--red);font-weight:700;">₹8,000</td><td>—</td><td style="text-align:right;font-weight:700;">₹8,450</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- ADVANCES -->
-    <div class="crm-pg" id="pg-advances">
-      <div class="ph"><div><div class="pt">Advances</div><div class="ps">Customer advance payments · Adjust against invoices</div></div><div class="ph-actions"><button class="btn btn-g btn-sm" onclick="openModal('m-adv')">+ Record Advance</button><button class="btn btn-gh btn-sm" onclick="exportExcel('advances')">📤 Export</button></div></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select><input class="inp" style="width:200px;" placeholder="🔍 Search by name/mobile…" oninput="filterRows('tb-adv',this.value)"/><button class="btn btn-g btn-sm" onclick="renderAdvances();toast('Filter applied','success')">Apply</button></div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Mobile</th><th class="r">Amount</th><th class="r">Remaining</th><th>Date</th><th>Mode</th><th class="r">Action</th></tr></thead>
-        <tbody id="tb-adv">
-          <tr data-s="priya sharma 9876543210"><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9876543210</td><td style="text-align:right;color:var(--grn);font-weight:700;">₹25,000</td><td style="text-align:right;color:var(--gold2);font-weight:700;">₹25,000</td><td style="color:var(--muted);">2026-02-10</td><td><span class="pill pb">UPI</span></td><td style="text-align:right;"><button class="btn btn-xs btn-g" onclick="openModal('m-adj-adv')">Adjust vs Invoice</button></td></tr>
-          <tr data-s="arun kumar 9812345678"><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="text-align:right;color:var(--grn);font-weight:700;">₹50,000</td><td style="text-align:right;color:var(--muted2);font-weight:700;">₹0</td><td style="color:var(--muted);">2026-01-20</td><td><span class="pill pv">Cash</span></td><td style="text-align:right;font-size:11px;color:var(--muted2);">Fully used</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- OUTSTANDING -->
-    <div class="crm-pg" id="pg-outstanding">
-      <div class="ph"><div><div class="pt">Outstanding Summary</div><div class="ps">Search customer-wise · Mobile is primary key</div></div><div style="background:var(--reddim);border:1px solid rgba(239,68,68,.3);border-radius:var(--r2);padding:8px 14px;text-align:right;"><div style="font-size:10px;color:var(--red);">Total Outstanding</div><div style="font-size:20px;font-weight:900;color:var(--red);">₹3,24,500</div></div></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select><input class="inp" style="width:220px;" placeholder="🔍 Customer name or mobile…" oninput="filterRows('tb-ost',this.value)"/><select class="inp" style="width:180px;" onchange="filterRows('tb-ost',this.value)"><option value="">All Customers</option><option value="meena">Meena Devi</option><option value="arun">Arun Kumar</option><option value="suresh">Suresh Iyer</option></select><button class="btn btn-g btn-sm" onclick="renderOutstanding();toast('Filter applied','success')">Apply</button><button class="btn btn-gh btn-sm" onclick="exportExcel('outstanding')">📤 Export</button></div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice</th><th>Customer</th><th>Mobile</th><th>Date</th><th class="r">Total</th><th class="r">Received</th><th class="r">Outstanding</th></tr></thead>
-        <tbody id="tb-ost">
-          <tr data-s="meena devi 9911223344"><td><span class="mn" onclick="openPdf('INV-1-0282','Meena Devi','9911223344','₹28,750',false)">INV-1-0282</span></td><td><span class="cn" onclick="openLedger('Meena Devi','9911223344')">Meena Devi</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9911223344</td><td style="color:var(--muted)">2026-02-18</td><td style="text-align:right;">₹28,750</td><td style="text-align:right;color:var(--grn);">₹0</td><td style="text-align:right;color:var(--red);font-weight:700;">₹28,750</td></tr>
-          <tr data-s="arun kumar 9812345678"><td><span class="mn" onclick="openPdf('INV-1-0275','Arun Kumar','9812345678','₹1,18,000',false)">INV-1-0275</span></td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="color:var(--muted)">2026-02-05</td><td style="text-align:right;">₹1,18,000</td><td style="text-align:right;color:var(--grn);">₹50,000</td><td style="text-align:right;color:var(--red);font-weight:700;">₹68,000</td></tr>
-          <tr data-s="suresh iyer 9934501234"><td><span class="mn" onclick="openPdf('INV-1-0270','Suresh Iyer','9934501234','₹2,11,500',false)">INV-1-0270</span></td><td><span class="cn" onclick="openLedger('Suresh Iyer','9934501234')">Suresh Iyer</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9934501234</td><td style="color:var(--muted)">2026-01-28</td><td style="text-align:right;">₹2,11,500</td><td style="text-align:right;color:var(--grn);">₹28,250</td><td style="text-align:right;color:var(--red);font-weight:700;">₹1,83,250</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- TCS REGISTER -->
-    <div class="crm-pg" id="pg-tcs">
-      <div class="ph"><div><div class="pt">TCS Register</div><div class="ps">1% TCS on cash receipts above ₹5,00,000 · Section 206C(1F)</div></div><button class="btn btn-g btn-sm" onclick="exportExcel('tcs')">📤 Export for 26Q</button></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select><input class="inp" style="width:200px;" placeholder="🔍 Search…" oninput="filterRows('tb-tcs',this.value)"/><button class="btn btn-g btn-sm" onclick="renderTCS();toast('Filter applied','success')">Apply</button></div>
-      <div class="g2" style="margin-bottom:14px;"><div class="kpi"><div class="kv" style="color:var(--red);">₹24,500</div><div class="kl">TCS Collected (FY)</div></div><div class="kpi"><div class="kv" style="color:var(--gold2);">₹24,50,000</div><div class="kl">Taxable Value (FY)</div></div></div>
-      <div class="alert al-a" style="margin-bottom:12px;">ℹ️ TCS @1% under Section 206C(1F) is applicable when cash received against a single invoice exceeds ₹5,00,000.</div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice No.</th><th>Date</th><th>Customer</th><th>Mobile</th><th>PAN</th><th class="r">Invoice Value</th><th class="r">Base for TCS</th><th class="r">TCS @1%</th><th>Mode</th></tr></thead>
-        <tbody id="tb-tcs">
-          <tr data-s="arun kumar 9812345678"><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td style="color:var(--muted)">2026-02-19</td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">ABCDE1234F</td><td style="text-align:right;font-weight:700;">₹5,24,500</td><td style="text-align:right;color:var(--muted);">₹5,00,000</td><td style="text-align:right;color:var(--red);font-weight:700;">₹5,000</td><td><span class="pill pv">Cash</span></td></tr>
-          <tr data-s="deepak sharma 9900112233"><td><span class="mn">INV-1-0265</span></td><td style="color:var(--muted)">2026-01-15</td><td><span class="cn" onclick="openLedger('Deepak Sharma','9900112233')">Deepak Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9900112233</td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">PQRST5678K</td><td style="text-align:right;font-weight:700;">₹7,07,000</td><td style="text-align:right;color:var(--muted);">₹7,00,000</td><td style="text-align:right;color:var(--red);font-weight:700;">₹7,000</td><td><span class="pill pv">Cash</span></td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- SFT REGISTER -->
-    <div class="crm-pg" id="pg-sft">
-      <div class="ph"><div><div class="pt">SFT Register</div><div class="ps">Statement of Financial Transactions · Cash receipts ₹2L+ per customer per FY</div></div><button class="btn btn-g btn-sm" onclick="exportExcel('sft')">📤 Export for SFT Filing</button></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current FY 2025-26</option><option>FY 2024-25</option></select><input class="inp" style="width:200px;" placeholder="🔍 Search customer…" oninput="filterRows('tb-sft',this.value)"/><button class="btn btn-g btn-sm" onclick="renderSFT();toast('Filter applied','success')">Apply</button></div>
-      <div class="alert al-r" style="margin-bottom:12px;">⚠️ <strong>3 customers</strong> have cash receipts exceeding ₹2,00,000 in FY 2025-26. PAN collection mandatory for these customers.</div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Customer</th><th>Mobile (PK)</th><th>PAN</th><th class="r">Cash Receipts (FY)</th><th>SFT Threshold</th><th>Status</th></tr></thead>
-        <tbody id="tb-sft">
-          <tr data-s="arun kumar 9812345678"><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">ABCDE1234F</td><td style="text-align:right;color:var(--red);font-weight:700;">₹5,50,000</td><td><span class="pill pr">₹2L+ ⚠️</span></td><td><span class="pill pr">Flag for SFT</span></td></tr>
-          <tr data-s="meena devi 9911223344"><td><span class="cn" onclick="openLedger('Meena Devi','9911223344')">Meena Devi</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9911223344</td><td style="font-family:var(--mono);font-size:11px;color:var(--amb);">⚠️ PAN MISSING</td><td style="text-align:right;color:var(--red);font-weight:700;">₹2,85,000</td><td><span class="pill pr">₹2L+ ⚠️</span></td><td><span class="pill pp">PAN Required</span></td></tr>
-          <tr data-s="deepak sharma 9900112233"><td><span class="cn" onclick="openLedger('Deepak Sharma','9900112233')">Deepak Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9900112233</td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">PQRST5678K</td><td style="text-align:right;color:var(--red);font-weight:700;">₹7,00,000</td><td><span class="pill pr">₹2L+ ⚠️</span></td><td><span class="pill pr">Flag for SFT</span></td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- ACCOUNT REGISTER -->
-    <div class="crm-pg" id="pg-account">
-      <div class="ph"><div><div class="pt">Account Register</div><div class="ps">Item-wise &amp; Invoice-wise with full invoice details</div></div><button class="btn btn-g btn-sm" onclick="exportExcel('account')">📤 Export Excel</button></div>
-      <div class="rfbar">
-        <div class="tabs-bar" style="margin:0;flex:0 0 auto;">
-          <button class="tbn active" onclick="acctTab('inv',this)">Invoice-wise</button>
-          <button class="tbn" onclick="acctTab('item',this)">Item-wise</button>
-        </div>
-        <select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option><option>Custom Range</option></select>
-        <input class="inp" style="width:200px;" placeholder="🔍 Search…" oninput="filterRows('tb-acct',this.value)"/>
-        <button class="btn btn-g btn-sm" onclick="renderAccount();toast('Filter applied','success')">Apply</button>
-      </div>
-      <div id="acct-inv" class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Mobile</th><th>State</th><th>GST Type</th><th>HSN</th><th class="r">Subtotal</th><th class="r">CGST</th><th class="r">SGST</th><th class="r">TCS</th><th class="r">Grand Total</th><th>Pay Mode</th></tr></thead>
-        <tbody id="tb-acct">
-          <tr data-s="inv-1-0284 priya 9876543210"><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="color:var(--muted)">2026-02-20</td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9876543210</td><td>Maharashtra</td><td><span class="pill pb">CGST+SGST</span></td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;color:var(--muted);">₹1,18,000</td><td style="text-align:right;color:var(--gold2);">₹1,770</td><td style="text-align:right;color:var(--gold2);">₹1,770</td><td style="text-align:right;">—</td><td style="text-align:right;font-weight:700;">₹1,21,540</td><td><span class="pill pb">UPI</span></td></tr>
-          <tr data-s="inv-1-0283 arun 9812345678"><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td style="color:var(--muted)">2026-02-19</td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--muted);">9812345678</td><td>Delhi</td><td><span class="pill pb">CGST+SGST</span></td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;color:var(--muted);">₹5,09,226</td><td style="text-align:right;color:var(--gold2);">₹7,638</td><td style="text-align:right;color:var(--gold2);">₹7,638</td><td style="text-align:right;color:var(--red);font-weight:700;">₹5,000</td><td style="text-align:right;font-weight:700;">₹5,29,503</td><td><span class="pill pv">Cash</span></td></tr>
-        </tbody>
-      </table></div>
-      <div id="acct-item" style="display:none;" class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice</th><th>Date</th><th>Category</th><th>Purity</th><th>Description</th><th>HSN</th><th class="r">Qty</th><th>Unit</th><th class="r">Rate</th><th class="r">Making</th><th class="r">Amount</th></tr></thead>
-        <tbody>
-          <tr><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="color:var(--muted)">2026-02-20</td><td><span class="pill pg">Gold</span></td><td>22K</td><td>Gold Necklace Set</td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;">12</td><td>grm</td><td style="text-align:right;color:var(--muted);">₹5,800</td><td style="text-align:right;color:var(--muted);">₹1,200</td><td style="text-align:right;font-weight:700;">₹70,800</td></tr>
-          <tr><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="color:var(--muted)">2026-02-20</td><td><span class="pill pg">Gold</span></td><td>22K</td><td>Gold Bangles Pair</td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;">8</td><td>grm</td><td style="text-align:right;color:var(--muted);">₹5,800</td><td style="text-align:right;color:var(--muted);">₹800</td><td style="text-align:right;font-weight:700;">₹47,200</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- GSTR-1 REGISTER -->
-    <div class="crm-pg" id="pg-gstr">
-      <div class="ph"><div><div class="pt">GST Register (GSTR-1)</div><div class="ps">HSN 7113 for all jewellery · Export for GSTR-1 filing</div></div><button class="btn btn-g btn-sm" onclick="exportExcel('gst')">📤 Export for GSTR-1</button></div>
-      <div class="rfbar"><select class="inp" style="width:150px;"><option>Current Month</option><option>Previous Month</option><option>Current FY</option></select><input class="inp" style="width:200px;" placeholder="🔍 Search…" oninput="filterRows('tb-gst',this.value)"/><button class="btn btn-g btn-sm" onclick="renderGSTR();toast('Filter applied','success')">Apply</button></div>
-      <div class="g3" style="margin-bottom:14px;"><div class="kpi"><div class="kv" style="font-size:18px;">₹7,84,200</div><div class="kl">Taxable Value</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--gold2);">₹11,763</div><div class="kl">CGST</div></div><div class="kpi"><div class="kv" style="font-size:18px;color:var(--gold2);">₹11,763</div><div class="kl">SGST</div></div></div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Invoice No.</th><th>Date</th><th>Customer</th><th>GSTIN</th><th>State</th><th>HSN</th><th class="r">Taxable</th><th class="r">CGST%</th><th class="r">CGST</th><th class="r">SGST%</th><th class="r">SGST</th><th class="r">Total</th></tr></thead>
-        <tbody id="tb-gst">
-          <tr data-s="inv-1-0284 priya"><td><span class="mn" onclick="openPdf('INV-1-0284','Priya Sharma','9876543210','₹1,21,540',false)">INV-1-0284</span></td><td style="color:var(--muted)">2026-02-20</td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-size:11px;font-family:var(--mono);color:var(--grn);">29AAAPF0939F1ZV</td><td>Maharashtra</td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;color:var(--muted);">₹1,18,000</td><td style="text-align:right;color:var(--muted);">1.5%</td><td style="text-align:right;color:var(--gold2);">₹1,770</td><td style="text-align:right;color:var(--muted);">1.5%</td><td style="text-align:right;color:var(--gold2);">₹1,770</td><td style="text-align:right;font-weight:700;">₹1,21,540</td></tr>
-          <tr data-s="inv-1-0283 arun"><td><span class="mn" onclick="openPdf('INV-1-0283','Arun Kumar','9812345678','₹5,24,500',true)">INV-1-0283</span></td><td style="color:var(--muted)">2026-02-19</td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-size:11px;font-family:var(--mono);color:var(--muted2);">—</td><td>Delhi</td><td style="font-family:var(--mono);font-size:11px;">7113</td><td style="text-align:right;color:var(--muted);">₹5,09,226</td><td style="text-align:right;color:var(--muted);">1.5%</td><td style="text-align:right;color:var(--gold2);">₹7,638</td><td style="text-align:right;color:var(--muted);">1.5%</td><td style="text-align:right;color:var(--gold2);">₹7,638</td><td style="text-align:right;font-weight:700;">₹5,29,503</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- DOWNLOAD BACKUP -->
-    <div class="crm-pg" id="pg-export">
-      <div class="ph"><div><div class="pt">Download Backup</div><div class="ps">Complete Excel backup — all data &amp; all reports</div></div></div>
-      <div class="g2" style="margin-bottom:14px;">
-        <div class="card cp"><div class="ct">📊 Data Tables</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">invoices</div><div style="color:var(--muted);font-size:11px;">All invoice headers</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">invoice_items</div><div style="color:var(--muted);font-size:11px;">Line items per invoice</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">payments</div><div style="color:var(--muted);font-size:11px;">All payments</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">customers</div><div style="color:var(--muted);font-size:11px;">Customer master</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">stocks</div><div style="color:var(--muted);font-size:11px;">Inventory items</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">cash_register</div><div style="color:var(--muted);font-size:11px;">Cash transactions</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">advances</div><div style="color:var(--muted);font-size:11px;">Advance payments</div></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;"><div style="font-weight:700;">stock_transactions</div><div style="color:var(--muted);font-size:11px;">Adjustment log</div></div>
-        </div></div>
-        <div class="card cp"><div class="ct">📁 Reports &amp; Registers</div><div style="display:flex;flex-direction:column;gap:8px;font-size:12px;">
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>Sales Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>TCS Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>SFT Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>GSTR-1 Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>Account Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>Cash Register</strong></span><span class="pill pv">included</span></div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;justify-content:space-between;align-items:center;"><span><strong>Outstanding Summary</strong></span><span class="pill pv">included</span></div>
-        </div></div>
-      </div>
-      <div class="card cp" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;"><div><div style="font-weight:700;color:var(--text);">📊 goldtrader_full_backup_raj_jewellers_2026-02-21.xlsx</div><div style="font-size:12px;color:var(--muted);margin-top:2px;">15 sheets · All data + all reports · Gold-header formatted · Auto column widths</div></div><button class="btn btn-g" id="dl-btn" onclick="fakeDownload(this)">📥 Download Full Backup</button></div>
-      <div id="dl-ok" class="alert al-g" style="display:none;">✅ Download started!</div>
-      <div class="alert al-a" style="font-size:12px;">API: <code style="background:var(--bg2);padding:2px 8px;border-radius:5px;font-family:var(--mono);font-size:11px;">GET /api/export/excel?tenant_id=1</code></div>
-    </div>
-
-    <!-- CUSTOMER MASTER -->
-    <div class="crm-pg" id="pg-customers">
-      <div class="ph"><div><div class="pt">Customer Master</div><div class="ps">Mobile is primary key · PAN mandatory if cash ≥ ₹2L/FY · State (GST) mandatory</div></div>
-        <div class="ph-actions">
-          <input class="inp" style="width:180px;" placeholder="🔍 Name or mobile…" oninput="filterRows('tb-cust',this.value)"/>
-          <button class="btn btn-gh btn-sm" onclick="openModal('m-import-cust')">📤 Import Excel</button>
-          <button class="btn btn-g btn-sm" onclick="openModal('m-cust')">+ Add Customer</button>
-        </div>
-      </div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Mobile (PK)</th><th>Name</th><th>PAN</th><th>State</th><th>GSTIN</th><th>Address</th><th class="r">Actions</th></tr></thead>
-        <tbody id="tb-cust">
-          <tr data-s="9876543210 priya sharma maharashtra"><td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold2);">9876543210</td><td><span class="cn" onclick="openLedger('Priya Sharma','9876543210')">Priya Sharma</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">ABCDE1234F</td><td>Maharashtra</td><td style="font-size:11px;color:var(--muted);">29AAAPF0939F1ZV</td><td style="font-size:12px;color:var(--muted);">Mumbai</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="editCust('Priya Sharma','9876543210','ABCDE1234F','Maharashtra','29AAAPF0939F1ZV','Mumbai')">Edit</button></td></tr>
-          <tr data-s="9812345678 arun kumar delhi"><td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold2);">9812345678</td><td><span class="cn" onclick="openLedger('Arun Kumar','9812345678')">Arun Kumar</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--grn);">PQRST5678K</td><td>Delhi</td><td style="color:var(--muted2);">—</td><td style="font-size:12px;color:var(--muted);">Delhi</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="editCust('Arun Kumar','9812345678','PQRST5678K','Delhi','','Delhi')">Edit</button></td></tr>
-          <tr data-s="9911223344 meena devi hyderabad"><td style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold2);">9911223344</td><td><span class="cn" onclick="openLedger('Meena Devi','9911223344')">Meena Devi</span></td><td style="font-family:var(--mono);font-size:11px;color:var(--amb);">⚠️ Missing</td><td>Telangana</td><td style="color:var(--muted2);">—</td><td style="font-size:12px;color:var(--muted);">Hyderabad</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="editCust('Meena Devi','9911223344','','Telangana','','Hyderabad')">Edit</button></td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- STOCK MASTER -->
-    <div class="crm-pg" id="pg-stock">
-      <div class="ph"><div><div class="pt">Stock Master</div><div class="ps">Gold/Silver/Diamond/Polish Charges · Units: grm, crt · Polish excluded from FIFO</div></div>
-        <div class="ph-actions"><button class="btn btn-gh btn-sm" onclick="openModal('m-fifo')">📊 FIFO Report</button><button class="btn btn-g btn-sm" onclick="openModal('m-stock')">+ Add Stock</button></div>
-      </div>
-      <div class="card tbl-wrap"><table class="tbl"><thead><tr><th>Category</th><th>Purity</th><th>Description</th><th>Unit</th><th class="r">Qty in Hand</th><th>Last Updated</th><th class="r">Actions</th></tr></thead>
-        <tbody id="tb-stock">
-          <tr><td><span class="pill pg">Gold</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--gold2);">22K</td><td style="color:var(--muted);">Necklace weight</td><td style="color:var(--muted);">grm</td><td style="text-align:right;font-weight:700;" id="sq-1">450.5</td><td style="color:var(--muted);font-size:11px;">20 Feb 2026</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="openAdj(1,'Gold 22K Necklace')">Adjust</button></td></tr>
-          <tr><td><span class="pill pg">Gold</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--gold2);">18K</td><td style="color:var(--muted);">Rings &amp; earrings</td><td style="color:var(--muted);">grm</td><td style="text-align:right;font-weight:700;" id="sq-2">320.0</td><td style="color:var(--muted);font-size:11px;">19 Feb 2026</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="openAdj(2,'Gold 18K Rings')">Adjust</button></td></tr>
-          <tr><td><span class="pill pm">Silver</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--muted);">std</td><td style="color:var(--muted);">925 Silverware</td><td style="color:var(--muted);">grm</td><td style="text-align:right;font-weight:700;" id="sq-3">12400</td><td style="color:var(--muted);font-size:11px;">15 Feb 2026</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="openAdj(3,'Silver 925')">Adjust</button></td></tr>
-          <tr><td><span class="pill pb">Diamond</span></td><td style="font-family:var(--mono);font-size:12px;color:var(--blue);">std</td><td style="color:var(--muted);">VVS1 Solitaires</td><td style="color:var(--muted);">crt</td><td style="text-align:right;font-weight:700;" id="sq-4">24.5</td><td style="color:var(--muted);font-size:11px;">10 Feb 2026</td><td style="text-align:right;"><button class="btn btn-xs btn-gh" onclick="openAdj(4,'Diamond VVS1')">Adjust</button></td></tr>
-          <tr style="opacity:.5;"><td><span class="pill pm" style="color:var(--muted2);">Polish</span></td><td style="color:var(--muted2);">—</td><td style="color:var(--muted2);">Polish charges (service)</td><td style="color:var(--muted2);">grm</td><td style="text-align:right;color:var(--muted2);">—</td><td style="color:var(--muted2);font-size:11px;">—</td><td style="text-align:right;font-size:11px;color:var(--muted2);">Excluded from FIFO</td></tr>
-        </tbody>
-      </table></div>
-    </div>
-
-    <!-- USER MANAGEMENT -->
-    <div class="crm-pg" id="pg-users">
-      <div class="ph"><div><div class="pt">User Management</div><div class="ps">Create staff logins · Change passwords · Role-based access</div></div><button class="btn btn-g btn-sm" onclick="openModal('m-new-user')">+ Create User</button></div>
-      <div class="card" id="users-list"><div style="text-align:center;color:var(--muted);padding:20px;">Loading users…</div></div>
-    </div>
-
-    <!-- COMPANY SETTINGS -->
-    <div class="crm-pg" id="pg-company">
-      <div class="ph"><div><div class="pt">Company Settings</div><div class="ps">Business details for invoices</div></div></div>
-      <div id="co-ok" class="alert al-g" style="display:none;">✅ Settings saved!</div>
-      <div class="g2">
-        <div class="card cp">
-          <div class="ct">🏢 Business Details</div>
-          <div class="fg"><label class="lbl">Company Name *</label><input class="inp" value="Raj Jewellers Pvt Ltd"/></div>
-          <div class="fr2"><div class="fg"><label class="lbl">GSTIN</label><input class="inp" value="27AAPFU0939F1ZV"/></div><div class="fg"><label class="lbl">Phone</label><input class="inp" value="+91 98765 43210"/></div></div>
-          <div class="fg"><label class="lbl">Email</label><input class="inp" type="email" value="info@rajjewellers.in"/></div>
-          <div class="fg"><label class="lbl">State (GST) *</label><select class="inp"><option>Maharashtra</option><option>Delhi</option><option>Gujarat</option><option>Karnataka</option></select></div>
-          <div class="fg"><label class="lbl">Address</label><textarea class="inp" rows="3" style="resize:none;">Shop No. 12, Gold Bazaar, Mumbai - 400001</textarea></div>
-          <button class="btn btn-g" style="width:100%;justify-content:center;" onclick="saveCompany()">💾 Save Settings</button>
-        </div>
-        <div class="card cp">
-          <div class="ct">🖼️ Company Logo (Drag &amp; Drop)</div>
-          <div class="dz" id="dz" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
-            <input type="file" accept="image/*" onchange="dzFile(event)"/>
-            <div id="dz-c"><div style="font-size:32px;margin-bottom:8px;">🖼️</div><div style="font-size:13px;color:var(--muted);">Drag &amp; drop logo here</div><div style="font-size:11px;color:var(--muted2);margin-top:3px;">or click to browse · PNG/JPG/SVG · max 2MB</div></div>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:8px;">Logo appears on all generated invoices.</div>
-          <div class="sep"></div>
-          <div class="ct">📄 Invoice Preview</div>
-          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;color:var(--muted);"><div style="color:var(--gold2);font-family:var(--display);font-size:14px;font-weight:700;margin-bottom:3px;">Raj Jewellers Pvt Ltd</div><div>GST: 27AAPFU0939F1ZV · +91 98765 43210</div><div>Shop No. 12, Gold Bazaar, Mumbai</div></div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- crm-main -->
-</div><!-- s-crm --></div>
 </div>
 
 <!-- ═══════════════════════════════ ADMIN PANEL ═══════════════════════════ -->
@@ -1831,36 +1358,10 @@ function signupDemo() {
   });
 }
 
-function openDemoSignup() {
-  // Navigate to login screen and activate Sign Up tab reliably
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-  const screen = document.getElementById('s-crm-login');
-  if(screen) screen.classList.add('show');
-  window.scrollTo(0, 0);
-  // Activate the Sign Up tab directly (no async race)
-  loginTab('su');
-  // Focus the first empty field
-  setTimeout(() => {
-    const field = document.getElementById('su-name');
-    if(field && !field.value) field.focus();
-  }, 100);
-}
-
-function openLoginScreen() {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
-  const screen = document.getElementById('s-crm-login');
-  if(screen) screen.classList.add('show');
-  window.scrollTo(0, 0);
-  loginTab('pw');
-  setTimeout(() => {
-    const field = document.getElementById('login-u');
-    if(field) field.focus();
-  }, 100);
-}
-
 function setSignupMode(mode) {
-  if(mode === 'demo') { openDemoSignup(); return; }
-  openLoginScreen();
+  goTo('s-crm-login');
+  // Small timeout so the screen transition completes before tab switch
+  setTimeout(() => loginTab(mode==='demo'?'su':'pw'), 50);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2848,79 +2349,9 @@ function toggleCashType(v){
   if(invRef)  invRef.style.display=(v==='in')?'block':'none';
 }
 
-/* ── Support Ticket ──────────────────────────────────────── */
-function openSupportModal() {
-  // Pre-fill name/company if logged in
-  const u = DB.currentUser;
-  if(u) {
-    const nameEl = document.getElementById('st-name');
-    const coEl   = document.getElementById('st-company');
-    const contEl = document.getElementById('st-contact');
-    if(nameEl && !nameEl.value) nameEl.value = u.name || '';
-    if(coEl   && !coEl.value)   coEl.value   = u.tenant || '';
-    if(contEl && !contEl.value) contEl.value = u.mobile || '';
-  }
-  document.getElementById('st-err').style.display     = 'none';
-  document.getElementById('st-success').style.display = 'none';
-  const btn = document.getElementById('st-submit-btn');
-  if(btn) btn.disabled = false;
-  openModal('m-support');
-  setTimeout(() => document.getElementById('st-name')?.focus(), 150);
-}
-
+/* Support ticket */
 function submitSupportTicket() {
-  const name     = document.getElementById('st-name')?.value.trim();
-  const contact  = document.getElementById('st-contact')?.value.trim();
-  const company  = document.getElementById('st-company')?.value.trim();
-  const category = document.getElementById('st-category')?.value;
-  const subject  = document.getElementById('st-subject')?.value.trim();
-  const body     = document.getElementById('st-body')?.value.trim();
-  const errEl    = document.getElementById('st-err');
-  const okEl     = document.getElementById('st-success');
-
-  // Validate
-  if(!name)     { errEl.textContent='❌ Please enter your name.';     errEl.style.display='block'; return; }
-  if(!contact)  { errEl.textContent='❌ Please enter mobile or email.'; errEl.style.display='block'; return; }
-  if(!category) { errEl.textContent='❌ Please select an issue category.'; errEl.style.display='block'; return; }
-  if(!subject)  { errEl.textContent='❌ Please enter a subject.';     errEl.style.display='block'; return; }
-  if(!body)     { errEl.textContent='❌ Please describe your issue.'; errEl.style.display='block'; return; }
-  errEl.style.display = 'none';
-
-  // Build email body
-  const tenant   = DB.currentUser?.tenant || company || 'Not logged in';
-  const emailBody = [
-    '=== GoldTrader Pro Support Request ===',
-    '',
-    'From:     ' + name,
-    'Contact:  ' + contact,
-    'Company:  ' + tenant,
-    'Category: ' + category,
-    '',
-    'Subject: ' + subject,
-    '',
-    '--- Issue Details ---',
-    body,
-    '',
-    '--- System Info ---',
-    'Submitted: ' + new Date().toLocaleString('en-IN', {timeZone:'Asia/Kolkata'}) + ' IST',
-    'URL: ' + window.location.href,
-  ].join('\n');
-
-  const mailSubject = '[GoldTrader Support] ' + category + ' — ' + subject;
-  const mailto = 'mailto:support@goldtraderpro.in'
-               + '?subject=' + encodeURIComponent(mailSubject)
-               + '&body='    + encodeURIComponent(emailBody);
-
-  // Disable button to prevent double-submit
-  const btn = document.getElementById('st-submit-btn');
-  if(btn) { btn.disabled = true; }
-
-  // Open mail client
-  window.location.href = mailto;
-
-  // Show success state
-  okEl.style.display = 'block';
-  toast('📧 Opening your email client…', 'success');
+  toast('Support ticket submitted! We will contact you within 24 hours.');
 }
 
 /* Modal helpers */
@@ -2930,8 +2361,8 @@ document.addEventListener('click',e=>{if(e.target.classList.contains('modal-bg')
 
 /* Mobile sidebar */
 document.addEventListener('DOMContentLoaded',()=>{
-  // Only render dashboard if user is already logged in (token in localStorage)
-  if(AUTH_TOKEN) renderDashboard();
+  // initial render
+  renderDashboard();
   // mobile check
   const checkMob=()=>{
     const tb=document.querySelector('.crm-topbar');
@@ -2962,81 +2393,5 @@ function renderFIFO() {
   });
 }
 </script>
-
-<!-- ═══════════════════════ SUPPORT TICKET MODAL ═══════════════════════ -->
-<div id="m-support" class="modal-bg">
-  <div class="modal" style="max-width:520px;width:95%;">
-    <div class="mt" style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:22px;">📩</span>
-      <div>
-        <div style="font-size:16px;font-weight:700;color:var(--text);">Raise a Support Ticket</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;">We'll respond within 2 hours · Mon–Sat 10 AM–6 PM IST</div>
-      </div>
-      <button onclick="closeModal('m-support')" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;">✕</button>
-    </div>
-
-    <div id="st-err" class="alert al-r" style="display:none;margin-bottom:12px;"></div>
-    <div id="st-success" class="alert al-g" style="display:none;margin-bottom:12px;">
-      ✅ <strong>Ticket opened!</strong> Your email client will open with a pre-filled message to <strong>support@goldtraderpro.in</strong>.<br>
-      <span style="font-size:12px;opacity:.8;">If it doesn't open, email us directly at support@goldtraderpro.in</span>
-    </div>
-
-    <div class="fr2" style="gap:10px;margin-bottom:10px;">
-      <div class="fg" style="margin:0;">
-        <label class="lbl">Your Name <span class="req">*</span></label>
-        <input class="inp" id="st-name" placeholder="Full name" autocomplete="name"/>
-      </div>
-      <div class="fg" style="margin:0;">
-        <label class="lbl">Mobile / Email <span class="req">*</span></label>
-        <input class="inp" id="st-contact" placeholder="Mobile or email" autocomplete="email"/>
-      </div>
-    </div>
-
-    <div class="fg" style="margin-bottom:10px;">
-      <label class="lbl">Company / Business Name</label>
-      <input class="inp" id="st-company" placeholder="Your jewellery business name"/>
-    </div>
-
-    <div class="fg" style="margin-bottom:10px;">
-      <label class="lbl">Issue Category <span class="req">*</span></label>
-      <select class="inp" id="st-category">
-        <option value="">— Select issue type —</option>
-        <option value="Login / Account Access">🔑 Login / Account Access</option>
-        <option value="Invoice / Billing Issue">🧾 Invoice / Billing Issue</option>
-        <option value="GST / TCS / SFT Compliance">📊 GST / TCS / SFT Compliance</option>
-        <option value="Stock / Inventory Problem">📦 Stock / Inventory Problem</option>
-        <option value="Payment Recording">💳 Payment Recording</option>
-        <option value="Report Not Loading">📈 Report Not Loading</option>
-        <option value="Customer / Ledger Issue">👥 Customer / Ledger Issue</option>
-        <option value="Demo / Trial Account">🚀 Demo / Trial Account</option>
-        <option value="Feature Request">💡 Feature Request</option>
-        <option value="Other">❓ Other</option>
-      </select>
-    </div>
-
-    <div class="fg" style="margin-bottom:10px;">
-      <label class="lbl">Subject <span class="req">*</span></label>
-      <input class="inp" id="st-subject" placeholder="Brief description of the issue"/>
-    </div>
-
-    <div class="fg" style="margin-bottom:16px;">
-      <label class="lbl">Describe your issue in detail <span class="req">*</span></label>
-      <textarea class="inp" id="st-body" rows="4" placeholder="Please include: what you were trying to do, what happened, any error messages you saw..." style="resize:vertical;min-height:90px;font-family:var(--font);"></textarea>
-    </div>
-
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-gh" style="flex:0 0 auto;" onclick="closeModal('m-support')">Cancel</button>
-      <button class="btn btn-g" style="flex:1;justify-content:center;" onclick="submitSupportTicket()" id="st-submit-btn">
-        📧 Send to support@goldtraderpro.in
-      </button>
-    </div>
-
-    <div style="margin-top:12px;text-align:center;font-size:11px;color:var(--muted);">
-      Or contact us directly: 
-      <a href="tel:8882935471" style="color:var(--gold2);">📞 8882935471</a> · 
-      <a href="mailto:support@goldtraderpro.in" style="color:var(--gold2);">✉️ support@goldtraderpro.in</a>
-    </div>
-  </div>
-</div>
 </body>
 </html>
