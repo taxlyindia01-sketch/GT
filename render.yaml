@@ -1,0 +1,37 @@
+# render.yaml — Render Blueprint for GoldTrader Pro v4
+
+services:
+  - type: web
+    name: goldtrader-backend
+    runtime: python
+    rootDir: backend
+    pythonVersion: "3.11.11"
+    buildCommand: python --version && pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: goldtrader-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TAXLY_ADMIN_USERNAME
+        value: Taxly
+      - key: TRIAL_DAYS
+        value: "10"
+      - key: FRONTEND_URL
+        value: "*"
+      - key: DEBUG
+        value: "False"
+      # NOTE: Set ADMIN_PASSWORD_HASH manually in Render dashboard
+      # (bcrypt hashes contain $ signs which break YAML)
+      # Value to paste: $2b$12$ZhJuQ.tZKyxLgVT/GqrzBeX20BFpN0sFKhzMBPUW0HbtnYKR8Mlsi
+      # This is the bcrypt hash of the password: @Gsf025@
+
+databases:
+  - name: goldtrader-db
+    databaseName: goldtrader_pro
+    user: goldtrader
+    plan: free
