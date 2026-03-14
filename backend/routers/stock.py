@@ -102,6 +102,56 @@ async def list_stock(
              "qty_on_hand": float(s.qty_on_hand)} for s in stocks]
 
 
+# ── Stock summary by category (used by dashboard chart) ────────────────────
+
+@router.get("/summary")
+async def get_stock_summary(
+    payload: dict         = Depends(get_current_user_payload),
+    db:      AsyncSession = Depends(get_db),
+):
+    """
+    Return stock grouped by category with total qty and estimated value.
+    Value is computed as qty_on_hand × avg purchase_rate from transactions.
+    Used by the dashboard stock donut chart.
+    """
+    result = await db.execute(
+        select(StockItem).where(
+            StockItem.tenant_id == payload["tenant_id"],
+            StockItem.is_active == True,
+        )
+    )
+    stocks = result.scalars().all()
+
+    category_map: dict = {}
+    for s in stocks:
+        cat = s.category.value if hasattr(s.category, "value") else str(s.category)
+
+        # Compute avg purchase rate from transactions
+        txn_result = await db.execute(
+            select(StockTransaction).where(
+                StockTransaction.stock_item_id == s.id,
+                StockTransaction.qty > 0,
+                StockTransaction.purchase_rate.isnot(None),
+            )
+        )
+        txns = txn_result.scalars().all()
+        if txns:
+            total_qty_in = sum(float(t.qty) for t in txns)
+            total_val_in = sum(float(t.qty) * float(t.purchase_rate) for t in txns)
+            avg_rate = total_val_in / total_qty_in if total_qty_in > 0 else 0.0
+        else:
+            avg_rate = 0.0
+
+        total_value = float(s.qty_on_hand) * avg_rate
+
+        if cat not in category_map:
+            category_map[cat] = {"category": cat, "qty_on_hand": 0.0, "total_value": 0.0}
+        category_map[cat]["qty_on_hand"] += float(s.qty_on_hand)
+        category_map[cat]["total_value"] += total_value
+
+    return {"categories": list(category_map.values())}
+
+
 # ── Purity options for invoice purity dropdown ─────────────────────────────
 
 @router.get("/purity-options")

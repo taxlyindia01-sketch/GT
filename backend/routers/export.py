@@ -3170,3 +3170,48 @@ async def export_supplier_account_excel(
     auto_col_width(ws)
     date_range = f"{from_date or 'all'}_{to_date or 'all'}"
     return _stream_workbook(wb, f"supplier_account_{date_range}.xlsx")
+
+
+# ── Cancelled Invoices Excel ──────────────────────────────────
+
+@router.get("/cancelled-invoices-excel")
+async def cancelled_invoices_excel(
+    from_date: Optional[date] = Query(None),
+    to_date:   Optional[date] = Query(None),
+    payload:   dict           = Depends(get_current_user_payload),
+    db:        AsyncSession   = Depends(get_db),
+):
+    """Export cancelled invoices to Excel."""
+    from models import InvoiceStatus
+    tenant_id = payload["tenant_id"]
+    stmt = (
+        select(Invoice)
+        .where(Invoice.tenant_id == tenant_id, Invoice.status == InvoiceStatus.cancelled)
+        .order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
+    )
+    if from_date:
+        stmt = stmt.where(Invoice.invoice_date >= from_date)
+    if to_date:
+        stmt = stmt.where(Invoice.invoice_date <= to_date)
+    result   = await db.execute(stmt)
+    invoices = result.scalars().all()
+
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    headers = ["Invoice No", "Invoice Date", "Customer Name", "Mobile", "PAN", "Pay Mode", "Grand Total", "Notes"]
+    rows = [
+        [
+            inv.invoice_no,
+            inv.invoice_date.isoformat(),
+            inv.customer_name,
+            inv.customer_mobile,
+            inv.customer_pan or "—",
+            inv.pay_mode.value,
+            float(inv.grand_total),
+            inv.notes or "",
+        ]
+        for inv in invoices
+    ]
+    add_sheet(wb, "Cancelled Invoices", headers, rows)
+    date_range = f"{from_date or 'all'}_{to_date or 'all'}"
+    return _stream_workbook(wb, f"cancelled_invoices_{date_range}.xlsx")

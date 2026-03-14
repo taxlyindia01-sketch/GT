@@ -12,7 +12,11 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 import os
 
-from database import engine, Base
+import logging
+from database import engine, Base, dispose_engine
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 from routers import (
     auth, invoices, customers, payments,
     cash, advances, stock, reports, admin, export,
@@ -29,15 +33,22 @@ INDEX_HTML   = FRONTEND_DIR / "index.html"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup: create tables and log pool config
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    pool = engine.pool
+    logger.info(
+        "DB pool ready — size=%s overflow=%s timeout=%ss recycle=%ss",
+        pool.size(), pool._max_overflow, engine.pool.timeout, engine.pool._recycle,
+    )
     yield
-    await engine.dispose()
+    # Shutdown: drain the pool cleanly before the process exits
+    await dispose_engine()
 
 
 app = FastAPI(
     title="GoldTrader Pro API",
-    description="Complete jewellery business management — GST, 269ST, SFT, FIFO",
+    description="Complete jewellery business management — GST, TCS, SFT, FIFO",
     version="4.1.0",
     lifespan=lifespan,
 )

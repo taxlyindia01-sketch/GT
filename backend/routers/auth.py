@@ -1,6 +1,7 @@
 # routers/auth.py — Authentication endpoints
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,9 +29,9 @@ class GoogleLoginRequest(BaseModel):
     id_token: str                       # Google ID token from frontend
 
 class GoogleSignupRequest(BaseModel):
-    id_token: str
-    company_name: str = Field(..., min_length=2, max_length=200)
-    mobile: str       = Field(..., pattern=r"^\d{10}$")
+    id_token:     str
+    company_name: Optional[str] = Field(default=None, max_length=200)
+    mobile:       Optional[str] = Field(default=None)
 
 class DemoSignupRequest(BaseModel):
     name:         str = Field(..., min_length=2, max_length=100)
@@ -168,6 +169,10 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
     email     = claims["email"]
     name      = claims.get("name", email)
 
+    # Use Google display name as default company name if not provided
+    company_name = (body.company_name or "").strip() or name
+    mobile       = (body.mobile or "").strip()
+
     # Check if Google account already has an account
     result = await db.execute(select(User).where(User.google_id == google_id))
     if result.scalar_one_or_none():
@@ -175,7 +180,7 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
 
     # Create Tenant
     tenant = Tenant(
-        company_name=body.company_name,
+        company_name=company_name,
         plan=PlanEnum.demo,
         is_active=True,
     )
@@ -187,7 +192,7 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
     user = User(
         tenant_id=tenant.id,
         username=name,
-        mobile=body.mobile,
+        mobile=mobile,
         email=email,
         password_hash=hash_password("google-oauth-no-password"),  # placeholder
         role=RoleEnum.admin,
@@ -195,7 +200,7 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
         google_id=google_id,
         approval_status=ApprovalStatus.trial,
         trial_expires_at=trial_expires,
-        company_name=body.company_name,
+        company_name=company_name,
         is_active=True,
     )
     db.add(user)
@@ -206,7 +211,7 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
         "sub":          str(user.id),
         "tenant_id":    tenant.id,
         "role":         RoleEnum.admin.value,
-        "mobile":       body.mobile,
+        "mobile":       mobile,
         "trial_active": True,
     })
 
@@ -214,7 +219,7 @@ async def google_signup(body: GoogleSignupRequest, db: AsyncSession = Depends(ge
         access_token=token,
         user_name=name,
         user_role=RoleEnum.admin.value,
-        tenant_name=body.company_name,
+        tenant_name=company_name,
         trial_active=True,
         trial_days_left=settings.TRIAL_DAYS,
     )
@@ -319,6 +324,8 @@ class CompanyProfileUpdate(BaseModel):
     bank_name:          _Opt[str]      = None
     bank_account_no:    _Opt[str]      = None
     bank_ifsc:          _Opt[str]      = None
+    bank_branch:        _Opt[str]      = None
+    authorised_person:  _Opt[str]      = None
     terms_conditions:   _Opt[str]      = None
     logo_url:           _Opt[str]      = None
 
@@ -345,9 +352,11 @@ async def get_company_profile(
         "upi_id":           getattr(tenant, "upi_id",           None),
         "qr_code_url":      getattr(tenant, "qr_code_url",      None),
         "bank_name":        getattr(tenant, "bank_name",        None),
-        "bank_account_no":  getattr(tenant, "bank_account_no",  None),
-        "bank_ifsc":        getattr(tenant, "bank_ifsc",        None),
-        "terms_conditions": getattr(tenant, "terms_conditions", None),
+        "bank_account_no":   getattr(tenant, "bank_account_no",   None),
+        "bank_ifsc":         getattr(tenant, "bank_ifsc",         None),
+        "bank_branch":       getattr(tenant, "bank_branch",       None),
+        "authorised_person": getattr(tenant, "authorised_person", None),
+        "terms_conditions":  getattr(tenant, "terms_conditions",  None),
     }
 
 
@@ -377,7 +386,8 @@ async def update_company_profile(
 
     # Extra fields — set only if the column exists on the model
     for field in ("pan", "upi_id", "qr_code_url", "bank_name",
-                  "bank_account_no", "bank_ifsc", "terms_conditions"):
+                  "bank_account_no", "bank_ifsc", "bank_branch",
+                  "authorised_person", "terms_conditions"):
         val = getattr(body, field, None)
         if val is not None and hasattr(tenant, field):
             setattr(tenant, field, val)

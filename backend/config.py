@@ -47,6 +47,16 @@ class Settings(BaseSettings):
     # ── Redis (optional) ─────────────────────────────────────
     REDIS_URL: str = ""
 
+    # ── Connection pool ───────────────────────────────────────
+    # pool_size: persistent connections kept open per process
+    # max_overflow: extra connections allowed above pool_size (burst capacity)
+    # pool_timeout: seconds to wait for a free connection before raising
+    # pool_recycle: recycle connections older than N seconds (prevents stale TCP)
+    DB_POOL_SIZE:     int = 5
+    DB_MAX_OVERFLOW:  int = 10
+    DB_POOL_TIMEOUT:  int = 30
+    DB_POOL_RECYCLE:  int = 300
+
     # ── Misc ─────────────────────────────────────────────────
     DEBUG: bool = False
     APP_NAME: str = "GoldTrader Pro"

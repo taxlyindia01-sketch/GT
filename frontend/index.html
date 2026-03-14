@@ -99,6 +99,7 @@ button{cursor:pointer;border:none;}
 .pd{background:rgba(149,117,205,.15);color:#9c6fe4;}
 .pm{background:var(--bg2);color:var(--muted);border:1px solid var(--border);}
 .pv{background:var(--grndim);color:var(--grn);}
+.pv{background:var(--grndim);color:var(--grn);}
 
 .inp{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);border-radius:var(--r);padding:8px 11px;font-size:13px;transition:border-color .15s;outline:none;}
 .inp:focus{border-color:var(--gold);}
@@ -631,7 +632,7 @@ footer{
   background:var(--bg1);
   position:sticky;top:0;z-index:40;
 }
-.pg-title-wrap{}
+.pg-title-wrap{display:block;}
 .pg-title{font-size:22px;font-weight:800;color:var(--text);font-family:var(--display);line-height:1.1;}
 .pg-sub{font-size:12px;color:var(--muted);margin-top:3px;}
 .pg-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:0;}
@@ -722,7 +723,7 @@ footer{
 .sec-action{font-size:11px;font-weight:700;color:var(--gold2);cursor:pointer;padding:4px 10px;border-radius:6px;transition:background .15s;}
 .sec-action:hover{background:var(--gdim);}
 .sec-body{padding:16px 18px;}
-.sec-body-flush{} /* no padding, use inside tbl-wrap */
+.sec-body-flush{padding:0;} /* no padding, use inside tbl-wrap */
 
 /* ── Filter bar (redesigned) ──────────────────────── */
 .fbar{
@@ -3857,9 +3858,10 @@ async function confirmCancelInvoice() {
 /* ── New Invoice form ────────────────────────────────────── */
 // ── Invoice: global state ─────────────────────────────────────
 let _availableStock = [];   // fetched on openNewInvoice
-let _paymentStore   = {};   // payment rows keyed by id for edit modal
-let _cashStore      = {};   // cash entry rows keyed by id for edit modal
-let _advanceStore   = {};   // advance rows keyed by id for edit modal
+let _paymentStore   = {};   // customer payment rows keyed by id
+let _cashStore      = {};   // cash entry rows keyed by id
+let _advanceStore   = {};   // customer advance rows keyed by id
+let _supPayStore    = {};   // supplier payment rows keyed by id (single global declaration)
 
 async function openNewInvoice() {
   // Reset form
@@ -4303,14 +4305,13 @@ function buildPDF(inv, items, co) {
     <!-- Bank / UPI / QR -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin:14px 24px 0;padding:12px 16px;background:#fafaf8;border:1px solid #eee;border-radius:6px;gap:16px;flex-wrap:wrap;">
       <div style="flex:1;min-width:200px;">
-        ${co.bank_name||co.bank_account?`
+        ${co.bank_name||co.bank_account_no?`
         <div style="font-size:10px;font-weight:700;color:#888;letter-spacing:1px;margin-bottom:6px;">BANK DETAILS</div>
         ${co.bank_name?`<div style="font-size:11px;">Bank: <strong>${esc(co.bank_name)}</strong></div>`:''}
-        ${co.bank_account?`<div style="font-size:11px;">A/c: <strong>${esc(co.bank_account)}</strong></div>`:''}
+        ${co.bank_account_no?`<div style="font-size:11px;">A/c: <strong>${esc(co.bank_account_no)}</strong></div>`:''}
         ${co.bank_ifsc?`<div style="font-size:11px;">IFSC: <strong>${esc(co.bank_ifsc)}</strong></div>`:''}
-        ${co.bank_branch?`<div style="font-size:11px;">Branch: ${esc(co.bank_branch)}</div>`:''}
         `:co.upi_id?`<div style="font-size:11px;">UPI: <strong>${esc(co.upi_id)}</strong></div>`:''}
-        ${co.upi_id&&(co.bank_name||co.bank_account)?`<div style="font-size:11px;margin-top:4px;">UPI: <strong>${esc(co.upi_id)}</strong></div>`:''}
+        ${co.upi_id&&(co.bank_name||co.bank_account_no)?`<div style="font-size:11px;margin-top:4px;">UPI: <strong>${esc(co.upi_id)}</strong></div>`:''}
       </div>
       ${co.qr_code_url?`
       <div style="text-align:center;">
@@ -4467,10 +4468,10 @@ async function loadPayments() {
         <td class="r" style="font-weight:700;color:var(--grn);">${inr(p.amount)}</td>
         <td><span class="pill pm">${esc(p.pay_mode)}</span></td>
         <td style="font-size:12px;color:var(--muted);">${esc(p.reference_no||'—')}</td>
-        <td><button class="btn btn-xs btn-gh" onclick="openEditPayment(${p.id})">✏️</button> <button class="btn btn-xs btn-red" onclick="confirmDeletePayment(${p.id})" title="Cancel payment">🗑️</button></td>
+        <td><button class="btn btn-xs btn-gh" onclick="openEditCustomerPayment(${p.id})">✏️</button> <button class="btn btn-xs btn-red" onclick="confirmDeletePayment(${p.id})" title="Cancel payment">🗑️</button></td>
       </tr>`).join('')
       : '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">No payments found</td></tr>';
-  } catch(e) { tbody.innerHTML = errRow(7, e.message); }
+  } catch(e) { tbody.innerHTML = errRow(8, e.message); }
 }
 
 async function openPaymentModal() {
@@ -4485,7 +4486,7 @@ async function openPaymentModal() {
 function openPaymentFor(invId, mobile) {
   openPaymentModal().then(() => {
     const sel = document.getElementById('pf-inv-select');
-    if (sel) { sel.value = invId; selectInvoiceForPayment(); }
+    if (sel) { sel.value = invId; selectCustomerInvoiceForPayment(); }
   });
 }
 
@@ -4574,7 +4575,7 @@ async function loadAdvances() {
         <td style="font-size:12px;color:var(--muted);">${esc(a.notes||'—')}</td>
         <td class="r" style="white-space:nowrap;">
           ${+a.remaining>0?`<button class="btn btn-xs btn-g" onclick="openAllocate(${a.id},${a.remaining},'${esc(a.customer_mobile)}')">Allocate</button> `:'<span class="pill pv" style="font-size:10px;">Allocated</span> '}
-          <button class="btn btn-xs btn-gh" onclick="openEditAdvance(${a.id})" title="Edit advance">✏️</button>
+          <button class="btn btn-xs btn-gh" onclick="openEditCustomerAdvance(${a.id})" title="Edit advance">✏️</button>
           <button class="btn btn-xs btn-red" onclick="confirmCancelAdvance(${a.id})" title="Cancel advance">🗑️</button>
         </td>
       </tr>`).join('')
@@ -5425,6 +5426,85 @@ async function submitSupport() {
 }
 
 /* ══════════════════════════════════════════════════════════
+   CUSTOMER PAYMENT & ADVANCE EDIT
+═══════════════════════════════════════════════════════════ */
+function openEditCustomerPayment(id) {
+  const p = _paymentStore[id] || {};
+  document.getElementById('ep-id').value    = id;
+  document.getElementById('ep-date').value  = p.payment_date || p.date || '';
+  document.getElementById('ep-amount').value = p.amount || '';
+  const modeEl = document.getElementById('ep-mode');
+  if (modeEl && p.pay_mode) modeEl.value = p.pay_mode;
+  document.getElementById('ep-ref').value   = p.reference_no || '';
+  document.getElementById('ep-notes').value = p.notes || '';
+  document.getElementById('ep-err').style.display = 'none';
+  openModal('m-edit-payment');
+}
+
+async function saveEditPayment() {
+  const err = document.getElementById('ep-err');
+  const btn = document.getElementById('ep-save-btn');
+  err.style.display = 'none';
+  const id     = document.getElementById('ep-id').value;
+  const amount = parseFloat(document.getElementById('ep-amount').value);
+  const date   = document.getElementById('ep-date').value;
+  if (!date || !amount || amount <= 0) {
+    err.style.display = 'block'; err.textContent = 'Date and a valid amount are required'; return;
+  }
+  const body = {
+    payment_date: date, amount,
+    pay_mode:     document.getElementById('ep-mode').value,
+    reference_no: document.getElementById('ep-ref').value   || null,
+    notes:        document.getElementById('ep-notes').value  || null,
+  };
+  setBtnLoading(btn, true);
+  try {
+    await PUT('/api/payments/' + id, body);
+    toast('Payment updated', 'success');
+    closeModal('m-edit-payment');
+    loadPayments(); loadInvoices();
+  } catch(e) { err.style.display = 'block'; err.textContent = e.message; }
+  finally { setBtnLoading(btn, false); }
+}
+
+function openEditCustomerAdvance(id) {
+  const a = _advanceStore[id] || {};
+  document.getElementById('ea-id').value     = id;
+  document.getElementById('ea-date').value   = a.date || '';
+  document.getElementById('ea-amount').value = a.amount || '';
+  const modeEl = document.getElementById('ea-mode');
+  if (modeEl && a.mode) modeEl.value = a.mode;
+  document.getElementById('ea-notes').value  = a.notes || '';
+  document.getElementById('ea-err').style.display = 'none';
+  openModal('m-edit-advance');
+}
+
+async function saveEditAdvance() {
+  const err = document.getElementById('ea-err');
+  const btn = document.getElementById('ea-save-btn');
+  err.style.display = 'none';
+  const id     = document.getElementById('ea-id').value;
+  const amount = parseFloat(document.getElementById('ea-amount').value);
+  const date   = document.getElementById('ea-date').value;
+  if (!date || !amount || amount <= 0) {
+    err.style.display = 'block'; err.textContent = 'Date and a valid amount are required'; return;
+  }
+  const body = {
+    advance_date: date, amount,
+    pay_mode:     document.getElementById('ea-mode').value,
+    notes:        document.getElementById('ea-notes').value || null,
+  };
+  setBtnLoading(btn, true);
+  try {
+    await PUT('/api/advances/' + id, body);
+    toast('Advance updated', 'success');
+    closeModal('m-edit-advance');
+    loadAdvances();
+  } catch(e) { err.style.display = 'block'; err.textContent = e.message; }
+  finally { setBtnLoading(btn, false); }
+}
+
+/* ══════════════════════════════════════════════════════════
    UTILITY
 ═══════════════════════════════════════════════════════════ */
 function v(id) { const el = document.getElementById(id); if (!el) return ''; if (el.tagName==='SELECT') return el.value; return (el.value !== undefined ? el.value : el.textContent || '').trim(); }
@@ -5487,14 +5567,13 @@ async function shareInvoiceWhatsApp() {
   if (previewEl && previewEl.innerHTML.trim()) {
     const printWin = window.open('', '_blank', 'width=900,height=700');
     if (printWin) {
+      // Fix: collapsed into a single concat to avoid broken string fragments;
+      // added @page margin so print output is properly padded
       printWin.document.write(
         '<!DOCTYPE html><html><head><title>Invoice ' + invNo + '</title>' +
-        '<style>' +
-          'body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;}' +
-          '@media print{body{margin:0;}}' +
-        '</style></head><body>' +
-        previewEl.innerHTML +
-        '</body></html>'
+        '<style>body{font-family:Arial,sans-serif;margin:0;padding:0;background:#fff;}' +
+        '@page{margin:10mm;}@media print{body{margin:0;}}</style>' +
+        '</head><body>' + previewEl.innerHTML + '</body></html>'
       );
       printWin.document.close();
       setTimeout(function() { printWin.focus(); printWin.print(); }, 400);
@@ -5653,7 +5732,10 @@ function addEditItem(prefill) {
     <td><input class="inp" style="width:80px;" type="number" step="0.01" min="0" placeholder="0.00" value="${rate}" oninput="calcEditInvTotals()"/></td>
     <td><input class="inp" style="width:75px;" type="number" step="0.01" min="0" value="${mkg}" oninput="calcEditInvTotals()"/></td>
     <td class="r" id="ei-amt-${idx}" style="font-weight:600;">${inr(amt)}</td>
-    <td><button class="btn btn-xs" style="color:var(--red);" onclick="document.getElementById('ei-row-${idx}').remove();calcEditInvTotals()">✕</button></td>`;
+    <td><button class="btn btn-xs" style="color:var(--red);" onclick="document.getElementById('ei-row-${idx}').remove();calcEditInvTotals()">✕</button></td>
+  `;
+  // Fix: each column is in a <td>; closing whitespace kept explicit so browser
+  // does not merge the last cell with adjacent text nodes on re-parse
   tbody.appendChild(tr);
   calcEditInvTotals();
 }
@@ -5850,7 +5932,7 @@ async function loadCompanyProfile() {
     set('co-gstin',      data.gstin           || '');
     set('co-upi',        data.upi_id          || '');
     set('co-bank-name',  data.bank_name       || '');
-    set('co-bank-acc',   data.bank_account    || '');
+    set('co-bank-acc',   data.bank_account_no || '');
     set('co-bank-ifsc',  data.bank_ifsc       || '');
     set('co-bank-branch',data.bank_branch     || '');
     set('co-terms',      data.terms_conditions|| '');
@@ -5899,7 +5981,7 @@ async function saveCompanyProfile() {
     gstin:             v('co-gstin')       || null,
     upi_id:            v('co-upi')         || null,
     bank_name:         v('co-bank-name')   || null,
-    bank_account:      v('co-bank-acc')    || null,
+    bank_account_no:   v('co-bank-acc')    || null,
     bank_ifsc:         v('co-bank-ifsc').toUpperCase() || null,
     bank_branch:       v('co-bank-branch') || null,
     terms_conditions:  v('co-terms')       || null,
@@ -6460,13 +6542,13 @@ async function loadOutstandingForPayment() {
       return;
     }
     tbody.innerHTML = invs.map(inv => `
-      <tr style="cursor:pointer;" onclick="selectInvoiceForPayment(${inv.id||0},'${esc(inv.invoice_no||'')}',${parseFloat(inv.outstanding)||0})">
+      <tr style="cursor:pointer;" onclick="selectInvoiceForPayment(${inv.id||0},'${esc(inv.invoice_no||'')}',${parseFloat(inv.outstanding)||0},event)">
         <td><strong>${esc(inv.invoice_no||'—')}</strong></td>
         <td>${d2(inv.invoice_date||'')}</td>
         <td class="r">${inr(inv.grand_total||0)}</td>
         <td class="r">${inr(inv.amount_paid||0)}</td>
         <td class="r" style="color:var(--amb);font-weight:700;">${inr(inv.outstanding||0)}</td>
-        <td><button class="btn btn-xs btn-g" onclick="selectInvoiceForPayment(${inv.id||0},'${esc(inv.invoice_no||'')}',${parseFloat(inv.outstanding)||0});event.stopPropagation();">Select</button></td>
+        <td><button class="btn btn-xs btn-g" onclick="selectInvoiceForPayment(${inv.id||0},'${esc(inv.invoice_no||'')}',${parseFloat(inv.outstanding)||0},event);event.stopPropagation();">Select</button></td>
       </tr>`).join('');
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:10px;font-size:12px;">Could not load invoices — enter amount manually</td></tr>';
@@ -6474,21 +6556,22 @@ async function loadOutstandingForPayment() {
 }
 
 let _selectedInvoiceId = null;
-function selectInvoiceForPayment(invId, invNo, amount) {
+// Fix: accept ev parameter — using bare `event` global fails in Firefox / strict mode
+function selectInvoiceForPayment(invId, invNo, amount, ev) {
   _selectedInvoiceId = invId || null;
   document.getElementById('spay-amount').value = amount.toFixed(2);
   const note = document.getElementById('spay-inv-ref-note');
   note.textContent = '✓ Invoice ' + invNo + ' selected · ₹' + amount.toFixed(2) + ' outstanding';
   note.style.display = '';
   document.getElementById('spay-ref').value = invNo;
-  // Highlight selected row
+  // Highlight selected row — guard against missing event (e.g. programmatic calls)
   document.querySelectorAll('#spay-inv-list tr').forEach(tr => tr.style.background='');
-  event.currentTarget.closest('tr').style.background='rgba(184,134,11,0.15)';
+  if (ev && ev.currentTarget) ev.currentTarget.closest('tr').style.background='rgba(184,134,11,0.15)';
 }
 
 /* ── Payment: Add / Edit ── */
 let _editPaymentId = null;
-let _supPayStore  = {};
+// _supPayStore declared globally above
 
 function openEditPayment(id) {
   const p = _supPayStore[id] || {};

@@ -16,6 +16,7 @@ from database import get_db
 from models import (
     Invoice, InvoiceItem, Customer, Payment,
     CashEntry, StockItem, StockTransaction, SupplierInvoice,
+    InvoiceStatus,
 )
 from utils.auth import get_current_user_payload
 from utils.business import current_fy, fifo_valuation, summarise_cash, SFT_THRESHOLD
@@ -929,3 +930,46 @@ async def supplier_account_report(
             "amount_paid": float(inv.amount_paid), "outstanding": float(inv.outstanding),
         })
     return {"rows": rows, "totals": {k: float(v) for k, v in tot.items()}}
+
+
+# ── Cancelled Invoices Register ───────────────────────────────
+
+@router.get("/cancelled-invoices")
+async def cancelled_invoices_report(
+    from_date: Optional[date] = Query(None),
+    to_date:   Optional[date] = Query(None),
+    payload:   dict           = Depends(get_current_user_payload),
+    db:        AsyncSession   = Depends(get_db),
+):
+    """List all cancelled invoices. Used by the Cancelled tab in Reports."""
+    tenant_id = payload["tenant_id"]
+    stmt = (
+        select(Invoice)
+        .where(Invoice.tenant_id == tenant_id, Invoice.status == InvoiceStatus.cancelled)
+        .order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
+    )
+    if from_date:
+        stmt = stmt.where(Invoice.invoice_date >= from_date)
+    if to_date:
+        stmt = stmt.where(Invoice.invoice_date <= to_date)
+
+    result   = await db.execute(stmt)
+    invoices = result.scalars().all()
+
+    rows = [{
+        "invoice_no":      inv.invoice_no,
+        "invoice_date":    inv.invoice_date.isoformat(),
+        "cancelled_at":    None,
+        "customer_name":   inv.customer_name,
+        "customer_mobile": inv.customer_mobile,
+        "customer_pan":    inv.customer_pan,
+        "pay_mode":        inv.pay_mode.value,
+        "grand_total":     float(inv.grand_total),
+        "notes":           inv.notes or "",
+    } for inv in invoices]
+
+    return {
+        "rows":            rows,
+        "total_cancelled": len(rows),
+        "total_value":     sum(r["grand_total"] for r in rows),
+    }
