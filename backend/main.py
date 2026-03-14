@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="GoldTrader Pro API",
-    description="Complete jewellery business management — GST, TCS, SFT, FIFO",
+    description="Complete jewellery business management — GST, 269ST, SFT, FIFO",
     version="4.1.0",
     lifespan=lifespan,
 )
