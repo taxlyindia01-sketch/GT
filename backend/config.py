@@ -7,7 +7,7 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # ── Database (REQUIRED) ───────────────────────────────────
     # Render provides postgresql:// — our database.py auto-converts it
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/goldtrader_pro"
+    DATABASE_URL: str = "postgresql+asyncpg://Golduser:GT123d@localhost:5432/Goldtrader"
 
     # ── Security (REQUIRED in production) ────────────────────
     JWT_SECRET: str = "change-me-generate-with-secrets-token-hex-32"
