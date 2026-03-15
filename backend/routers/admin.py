@@ -26,7 +26,6 @@ from models import (
     Tenant, User, Invoice, InvoiceItem, Customer, Payment, Advance,
     CashEntry, StockItem, StockTransaction,
     Supplier, SupplierInvoice, SupplierInvoiceItem, SupplierPayment, SupplierAdvance,
-    GoogleSignupRequest,
 )
 
 from config import settings
