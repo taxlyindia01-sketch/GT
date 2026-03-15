@@ -25,8 +25,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "*"
 
     # ── Google OAuth (optional) ───────────────────────────────
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_CLIENT_ID: str = 863366877040-e8bi45pfb3mo1ec03c395g8dbaatvke5.apps.googleusercontent.com
+    GOOGLE_CLIENT_SECRET: str = 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
 
     # ── Trial ────────────────────────────────────────────────
     TRIAL_DAYS: int = 10
