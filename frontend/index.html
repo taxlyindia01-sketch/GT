@@ -956,7 +956,7 @@ footer{
 /* ═══════════════════════════════════════════════════
    LOGIN SPLIT SCREEN
 ═══════════════════════════════════════════════════ */
-.login-split-wrap{display:flex;min-height:100vh;width:100%;}
+.login-split-wrap{display:flex;min-height:100vh;width:100%;overflow-x:hidden;}
 .login-left-panel{flex:1;min-width:0;background:linear-gradient(145deg,#020c14 0%,#071828 40%,#0a2035 100%);display:flex;align-items:center;justify-content:center;padding:40px;position:relative;overflow:hidden;}
 .login-left-panel::before{content:'';position:absolute;top:-100px;right:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(200,144,10,.12) 0%,transparent 70%);pointer-events:none;}
 .login-left-panel::after{content:'';position:absolute;bottom:-80px;left:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(200,144,10,.08) 0%,transparent 70%);pointer-events:none;}
@@ -971,12 +971,33 @@ footer{
 .llp-feat-s{font-size:11px;color:rgba(255,255,255,.5);line-height:1.5;}
 .llp-preview{margin-bottom:20px;border-radius:12px;overflow:hidden;border:1px solid rgba(200,144,10,.2);}
 .llp-tagline{text-align:center;font-size:11px;color:rgba(200,144,10,.7);font-style:italic;}
-.login-right-panel{width:480px;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 32px;overflow-y:auto;}
+.login-right-panel{width:480px;flex-shrink:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:40px 32px;overflow-y:auto;min-height:100vh;}
 .login-form-wrap{width:100%;max-width:380px;}
+/* Login responsive — covers all mobile widths */
 @media(max-width:860px){
   .login-left-panel{display:none;}
-  .login-right-panel{width:100%;padding:28px 20px;}
-  .login-split-wrap{justify-content:center;}
+  .login-right-panel{
+    width:100%;
+    padding:32px 24px;
+    /* Remove fixed height constraints so form never clips */
+    min-height:100vh;
+    align-items:flex-start;
+    padding-top:48px;
+  }
+  .login-split-wrap{justify-content:center;min-height:100vh;}
+  .login-form-wrap{max-width:420px;width:100%;}
+}
+@media(max-width:480px){
+  .login-right-panel{padding:28px 16px;padding-top:40px;}
+  .login-form-wrap{max-width:100%;}
+  .auth-card{padding:20px 14px;}
+  .auth-logo-mark{width:46px!important;height:46px!important;}
+  .auth-title{font-size:20px;}
+  /* Ensure Google button is fully tappable */
+  .google-btn{padding:12px 14px;}
+  /* Ensure login button fills width */
+  #login-btn{min-height:46px;font-size:14px;}
+  #su-btn{min-height:46px;font-size:14px;}
 }
 
 .feat-card-rich{display:flex;flex-direction:column;}
@@ -1402,7 +1423,7 @@ footer{
     <div class="support-card">
       <div class="support-company">Taxly India</div>
       <div class="support-row"><span class="sup-icon">📞</span><div><div style="font-weight:600;font-size:14px;">+91 99996 35471</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px;">Mon–Sat, 10 am – 7 pm IST</div></div></div>
-      <div class="support-row"><span class="sup-icon">✉️</span><div><a href="mailto:support@taxlyindia.com" style="color:var(--gold2);font-size:13.5px;">support@taxlyindia.com</a></div></div>
+      <div class="support-row"><span class="sup-icon">✉️</span><div><a href="/cdn-cgi/l/email-protection#ef9c9a9f9f809d9baf9b8e97839686818b868ec18c8082" style="color:var(--gold2);font-size:13.5px;"><span class="__cf_email__" data-cfemail="d8abada8a8b7aaac98acb9a0b4a1b1b6bcb1b9f6bbb7b5">[email&#160;protected]</span></a></div></div>
       <div class="support-row"><span class="sup-icon">🌐</span><div style="font-family:var(--mono);font-size:13px;color:var(--gold2);">Goldtraderpro.in</div></div>
       <div style="margin-top:22px;">
         <button class="btn-primary" style="width:100%;justify-content:center;font-size:13.5px;padding:13px;" onclick="openSupportModal()">📩 Raise a Support Ticket</button>
@@ -1439,11 +1460,11 @@ footer{
   </div>
   <div class="footer-bottom">
     <span>© 2026 Taxly India. All rights reserved. GST Invoicing &amp; CRM for Indian Jewellers.</span>
-    <span style="color:rgba(200,144,10,.45);">support@taxlyindia.com</span>
+    <span style="color:rgba(200,144,10,.45);"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="43303633332c31370337223b2f3a2a2d272a226d202c2e">[email&#160;protected]</a></span>
   </div>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // Scroll reveal — wait for full DOM
 document.addEventListener('DOMContentLoaded', function() {
   const obs = new IntersectionObserver(entries=>{
@@ -1779,7 +1800,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div id="lt-su" style="display:none;">
           <div id="su-err" class="alert al-r" style="display:none;margin-bottom:10px;"></div>
           <div class="fg"><label class="lbl">FULL NAME <span class="req">*</span></label><input class="inp" id="su-name" placeholder="Your full name" autocomplete="name" onkeydown="if(event.key==='Enter')document.getElementById('su-mob').focus()"/></div>
-          <div class="fg"><label class="lbl">MOBILE <span class="req">*</span></label><input class="inp" id="su-mob" placeholder="10-digit mobile number" maxlength="10" type="tel" onkeydown="if(event.key==='Enter')document.getElementById('su-co').focus()"/></div>
+          <div class="fg"><label class="lbl">MOBILE <span class="req">*</span></label><input class="inp" id="su-mob" placeholder="10-digit mobile number" maxlength="10" type="tel" onkeydown="if(event.key==='Enter')document.getElementById('su-pwd').focus()"/></div>
           <div class="fg"><label class="lbl">PASSWORD <span class="req">*</span></label><input class="inp" id="su-pwd" type="password" placeholder="Create a password (min 8 chars)" autocomplete="new-password" onkeydown="if(event.key==='Enter')signupDemo()"/></div>
           <button class="btn btn-g" style="width:100%;justify-content:center;margin-top:4px;" id="su-btn" onclick="signupDemo()">Sign Up →</button>
           <div class="auth-divider"><span>Or continue with</span></div>
@@ -2459,7 +2480,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class="btn btn-g btn-sm" onclick="openModal('m-support')">📩 Raise Support Ticket</button>
             <div style="margin-top:16px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;">
               <span>📞 +91 99996 35471</span>
-              <span>✉️ <a href="mailto:support@taxlyindia.com" style="color:var(--gold2);">support@taxlyindia.com</a></span>
+              <span>✉️ <a href="/cdn-cgi/l/email-protection#91e2e4e1e1fee3e5d1e5f0e9fde8f8fff5f8f0bff2fefc" style="color:var(--gold2);"><span class="__cf_email__" data-cfemail="97e4e2e7e7f8e5e3d7e3f6effbeefef9f3fef6b9f4f8fa">[email&#160;protected]</span></a></span>
             </div>
           </div>
         </div>
@@ -3336,7 +3357,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 /* ═══════════════════════════════════════════════════════════
    GOLDTRADER PRO — Complete Frontend JavaScript
    Google Client ID (set via window global so GIS SDK can use it)
@@ -7956,14 +7977,4 @@ document.addEventListener('click', e => {
       <div class="mt">✏️ Edit Cash Entry</div>
       <div id="ec-err" class="alert al-r" style="display:none;margin-bottom:10px;"></div>
       <div class="mf-grid">
-        <div><label class="lbl">Date *</label><input class="inp" type="date" id="ec-date"/></div>
-        <div><label class="lbl">Type *</label>
-          <select class="inp" id="ec-type">
-            <option value="cash_in">Cash In</option>
-            <option value="cash_out">Cash Out</option>
-            <option value="cash_to_bank">To Bank</option>
-            <option value="bank_in">Bank → Cash</option>
-          </select>
-        </div>
-        <div><label class="lbl">Amount *</label><input class="inp" type="number" step="0.01" id="ec-amount" placeholder="0.00"/></div>
-        <div><label class="lbl">Bank Reference</label><input class="inp" id="ec-ref" placeholder="U
+        <div><label class="lbl">Date *</label><input class="
