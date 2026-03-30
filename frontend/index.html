@@ -5072,7 +5072,7 @@ function buildPDF(inv, items, co) {
         '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.qty||0).toFixed(3) + ' ' + esc(it.unit||'') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + rs(it.rate) + '</td>' +
-        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + rs(it.polish_charges||0) + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.polish_charges||0).toFixed(3) + ' ' + esc(it.unit||'grm') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + rs(it.making_charges) + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:12px;font-weight:700;">' + rs(it.amount) + '</td>' +
         '</tr>'
@@ -5128,7 +5128,7 @@ function buildPDF(inv, items, co) {
             '<th style="text-align:left;">Description</th>' +
             '<th style="text-align:right;width:90px;">Qty / Unit</th>' +
             '<th style="text-align:right;width:100px;">Rate (Rs.)</th>' +
-            '<th style="text-align:right;width:90px;">Polish (Rs.)</th>' +
+            '<th style="text-align:right;width:90px;">Polish (Qty/Unit)</th>' +
             '<th style="text-align:right;width:90px;">Making (Rs.)</th>' +
             '<th style="text-align:right;width:110px;">Amount (Rs.)</th>' +
           '</tr>' +
