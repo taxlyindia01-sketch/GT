@@ -22,7 +22,7 @@ from openpyxl.chart.series import DataPoint
 from database import get_db
 from models import (
     Invoice, InvoiceItem, Customer, Payment,
-    CashEntry, Advance, StockItem, StockTransaction,
+    CashEntry, Advance, AdvanceAllocation, StockItem, StockTransaction,
     Supplier, SupplierInvoice, SupplierInvoiceItem, SupplierPayment, SupplierAdvance,
 )
 from utils.auth import get_current_user_payload
@@ -1785,11 +1785,12 @@ async def export_supplier_ledger_excel(
     )
     invoices = inv_r.scalars().all()
 
-    # Fetch payments
+    # Fetch payments — exclude Advance Adj rows (already credited via advances below)
     pay_r = await db.execute(
         select(SupplierPayment)
         .where(SupplierPayment.tenant_id == tid,
-               SupplierPayment.supplier_mobile == mobile)
+               SupplierPayment.supplier_mobile == mobile,
+               SupplierPayment.pay_mode != "Advance Adj")
         .order_by(SupplierPayment.payment_date)
     )
     payments = pay_r.scalars().all()
@@ -1994,14 +1995,6 @@ async def export_customer_ledger_excel(
     )
     advances = adv_r.scalars().all()
 
-    alloc_r = await db.execute(
-        select(AdvanceAllocation)
-        .join(Advance, AdvanceAllocation.advance_id == Advance.id)
-        .where(Advance.tenant_id == tid, Advance.customer_mobile == mobile)
-        .order_by(AdvanceAllocation.allocated_at)
-    )
-    allocations = alloc_r.scalars().all()
-
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Customer Ledger"
@@ -2087,12 +2080,6 @@ async def export_customer_ledger_excel(
                          "ref": f"ADV-{a.id}",
                          "debit": 0.0, "credit": float(a.amount),
                          "notes": a.notes or ""})
-    for alloc in allocations:
-        alloc_date = alloc.allocated_at.date() if hasattr(alloc.allocated_at, "date") else alloc.allocated_at
-        entries.append({"date": alloc_date, "type": "Advance Adj",
-                         "ref": f"ADV-{alloc.advance_id}",
-                         "debit": 0.0, "credit": float(alloc.allocated_amount),
-                         "notes": f"Advance adjusted against invoice"})
     entries.sort(key=lambda x: x["date"])
 
     # Header row

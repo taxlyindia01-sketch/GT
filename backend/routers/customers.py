@@ -10,7 +10,7 @@ from sqlalchemy import select
 import pandas as pd
 
 from database import get_db
-from models import Customer, Invoice, Payment, Advance, AdvanceAllocation
+from models import Customer, Invoice, Payment, Advance
 from utils.auth import get_tenant_payload as get_current_user_payload
 from utils.business import pan_is_mandatory, is_sft_flagged, current_fy
 
@@ -175,15 +175,6 @@ async def customer_ledger(
     )
     advances = adv_result.scalars().all()
 
-    # Advance allocations (applied against invoices)
-    alloc_result = await db.execute(
-        select(AdvanceAllocation)
-        .join(Advance, AdvanceAllocation.advance_id == Advance.id)
-        .where(Advance.tenant_id == tenant_id, Advance.customer_mobile == mobile)
-        .order_by(AdvanceAllocation.allocated_at)
-    )
-    allocations = alloc_result.scalars().all()
-
     # Build ledger entries — unsorted, then sort by date
     raw_entries = []
 
@@ -206,22 +197,16 @@ async def customer_ledger(
         })
 
     for adv in advances:
+        # Show the advance as a credit entry (cash received from customer).
+        # AdvanceAllocation rows are intentionally excluded — allocation is an internal
+        # application of the advance against an invoice, not a new cash receipt.
+        # Showing both would double-count the same payment.
         raw_entries.append({
             "date":   adv.advance_date.isoformat(),
             "type":   "Advance",
             "ref":    f"ADV-{adv.id}",
             "debit":  0.0,
             "credit": float(adv.amount),
-        })
-
-    for alloc in allocations:
-        # Advance allocation reduces outstanding: credit side (reduces what customer owes)
-        raw_entries.append({
-            "date":   alloc.allocated_at.date().isoformat() if hasattr(alloc.allocated_at, "date") else str(alloc.allocated_at)[:10],
-            "type":   "Advance Adj",
-            "ref":    f"ADV-{alloc.advance_id}",
-            "debit":  0.0,
-            "credit": float(alloc.allocated_amount),
         })
 
     raw_entries.sort(key=lambda e: e["date"])
