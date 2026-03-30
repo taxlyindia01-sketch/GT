@@ -229,10 +229,16 @@ async def supplier_ledger(
             "credit": 0.0, "notes": inv.notes or "",
         })
 
-    # Payments → credit (we paid them)
+    # Payments -> credit (we paid them)
+    # Exclude "Advance Adj" rows — those are advance allocations already counted
+    # via the SupplierAdvance entry below. Including them would double-count.
     pay_r = await db.execute(
         select(SupplierPayment)
-        .where(SupplierPayment.tenant_id == tid, SupplierPayment.supplier_mobile == mobile)
+        .where(
+            SupplierPayment.tenant_id == tid,
+            SupplierPayment.supplier_mobile == mobile,
+            SupplierPayment.pay_mode != "Advance Adj",
+        )
         .order_by(SupplierPayment.payment_date)
     )
     for p in pay_r.scalars().all():
@@ -242,7 +248,9 @@ async def supplier_ledger(
             "credit": float(p.amount), "notes": p.notes or "",
         })
 
-    # Advances → credit
+    # Advances -> credit (full amount when recorded; allocation tracked via remaining)
+    # Show each advance once. The allocation to invoice reduces adv.remaining but the
+    # full adv.amount appears in the ledger as the credit entry for the advance.
     adv_r = await db.execute(
         select(SupplierAdvance)
         .where(SupplierAdvance.tenant_id == tid, SupplierAdvance.supplier_mobile == mobile)

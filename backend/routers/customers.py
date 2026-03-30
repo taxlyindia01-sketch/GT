@@ -10,7 +10,7 @@ from sqlalchemy import select
 import pandas as pd
 
 from database import get_db
-from models import Customer, Invoice, Payment
+from models import Customer, Invoice, Payment, Advance, AdvanceAllocation
 from utils.auth import get_tenant_payload as get_current_user_payload
 from utils.business import pan_is_mandatory, is_sft_flagged, current_fy
 
@@ -166,37 +166,76 @@ async def customer_ledger(
     )
     payments = pay_result.scalars().all()
 
-    # Build ledger entries
-    entries = []
-    balance = 0.0
+    # Advances (full amount when recorded)
+    adv_result = await db.execute(
+        select(Advance).where(
+            Advance.tenant_id      == tenant_id,
+            Advance.customer_mobile == mobile,
+        ).order_by(Advance.advance_date)
+    )
+    advances = adv_result.scalars().all()
+
+    # Advance allocations (applied against invoices)
+    alloc_result = await db.execute(
+        select(AdvanceAllocation)
+        .join(Advance, AdvanceAllocation.advance_id == Advance.id)
+        .where(Advance.tenant_id == tenant_id, Advance.customer_mobile == mobile)
+        .order_by(AdvanceAllocation.allocated_at)
+    )
+    allocations = alloc_result.scalars().all()
+
+    # Build ledger entries — unsorted, then sort by date
+    raw_entries = []
 
     for inv in invoices:
-        balance += float(inv.grand_total)
-        entries.append({
-            "date":       inv.invoice_date.isoformat(),
-            "type":       "Invoice",
-            "ref":        inv.invoice_no,
-            "debit":      float(inv.grand_total),
-            "credit":     0,
-            "balance":    balance,
+        raw_entries.append({
+            "date":   inv.invoice_date.isoformat(),
+            "type":   "Invoice",
+            "ref":    inv.invoice_no,
+            "debit":  float(inv.grand_total),
+            "credit": 0.0,
         })
 
     for pay in payments:
-        balance -= float(pay.amount)
-        entries.append({
+        raw_entries.append({
             "date":   pay.payment_date.isoformat(),
             "type":   "Payment",
             "ref":    f"PMT-{pay.id}",
-            "debit":  0,
+            "debit":  0.0,
             "credit": float(pay.amount),
-            "balance": balance,
         })
 
-    entries.sort(key=lambda e: e["date"])
+    for adv in advances:
+        raw_entries.append({
+            "date":   adv.advance_date.isoformat(),
+            "type":   "Advance",
+            "ref":    f"ADV-{adv.id}",
+            "debit":  0.0,
+            "credit": float(adv.amount),
+        })
+
+    for alloc in allocations:
+        # Advance allocation reduces outstanding: credit side (reduces what customer owes)
+        raw_entries.append({
+            "date":   alloc.allocated_at.date().isoformat() if hasattr(alloc.allocated_at, "date") else str(alloc.allocated_at)[:10],
+            "type":   "Advance Adj",
+            "ref":    f"ADV-{alloc.advance_id}",
+            "debit":  0.0,
+            "credit": float(alloc.allocated_amount),
+        })
+
+    raw_entries.sort(key=lambda e: e["date"])
+
+    # Running balance
+    entries = []
+    balance = 0.0
+    for e in raw_entries:
+        balance += e["debit"] - e["credit"]
+        entries.append({**e, "balance": round(balance, 2)})
 
     return {
         "customer":        {"mobile": customer.mobile, "name": customer.name, "pan": customer.pan},
-        "outstanding":     balance,
+        "outstanding":     round(balance, 2),
         "total_invoiced":  sum(e["debit"]  for e in entries),
         "total_paid":      sum(e["credit"] for e in entries),
         "entries":         entries,
