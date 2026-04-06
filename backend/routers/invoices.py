@@ -660,11 +660,17 @@ async def edit_invoice(
         )
         old_items = old_items_result.scalars().all()
         for old_item in old_items:
+            # Handle None purity correctly — use is_(None) instead of == None
+            purity_filter = (
+                StockItem.purity.is_(None)
+                if old_item.purity is None
+                else StockItem.purity == old_item.purity
+            )
             stock_result = await db.execute(
                 select(StockItem).where(
                     StockItem.tenant_id == tenant_id,
                     StockItem.category  == old_item.category,
-                    StockItem.purity    == old_item.purity,
+                    purity_filter,
                     StockItem.is_active == True,
                 ).limit(1)
             )
