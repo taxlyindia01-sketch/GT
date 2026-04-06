@@ -407,8 +407,10 @@ class CompanyProfileUpdate(BaseModel):
     bank_name:          _Opt[str]      = None
     bank_account_no:    _Opt[str]      = None
     bank_ifsc:          _Opt[str]      = None
+    bank_branch:        _Opt[str]      = None
     terms_conditions:   _Opt[str]      = None
     logo_url:           _Opt[str]      = None
+    authorised_person:  _Opt[str]      = None
 
 
 @router.get("/profile")
@@ -421,21 +423,22 @@ async def get_company_profile(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     return {
-        "company_name":     tenant.company_name,
-        "gstin":            tenant.gstin,
-        "phone":            tenant.phone,
-        "email":            tenant.email,
-        "address":          tenant.address,
-        "state":            tenant.state,
-        "logo_url":         tenant.logo_url,
-        # Extra profile fields — return None if column doesn't exist yet
-        "pan":              getattr(tenant, "pan",              None),
-        "upi_id":           getattr(tenant, "upi_id",           None),
-        "qr_code_url":      getattr(tenant, "qr_code_url",      None),
-        "bank_name":        getattr(tenant, "bank_name",        None),
-        "bank_account_no":  getattr(tenant, "bank_account_no",  None),
-        "bank_ifsc":        getattr(tenant, "bank_ifsc",        None),
-        "terms_conditions": getattr(tenant, "terms_conditions", None),
+        "company_name":      tenant.company_name,
+        "gstin":             tenant.gstin,
+        "phone":             tenant.phone,
+        "email":             tenant.email,
+        "address":           tenant.address,
+        "state":             tenant.state,
+        "logo_url":          tenant.logo_url,
+        "pan":               tenant.pan,
+        "upi_id":            tenant.upi_id,
+        "qr_code_url":       tenant.qr_code_url,
+        "bank_name":         tenant.bank_name,
+        "bank_account_no":   tenant.bank_account_no,
+        "bank_ifsc":         tenant.bank_ifsc,
+        "bank_branch":       tenant.bank_branch,
+        "terms_conditions":  tenant.terms_conditions,
+        "authorised_person": tenant.authorised_person,
     }
 
 
@@ -455,20 +458,22 @@ async def update_company_profile(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
 
-    tenant.company_name = body.company_name
-    if body.gstin    is not None: tenant.gstin    = body.gstin
-    if body.phone    is not None: tenant.phone    = body.phone
-    if body.email    is not None: tenant.email    = body.email
-    if body.address  is not None: tenant.address  = body.address
-    if body.state    is not None: tenant.state    = body.state
-    if body.logo_url is not None: tenant.logo_url = body.logo_url
-
-    # Extra fields — set only if the column exists on the model
-    for field in ("pan", "upi_id", "qr_code_url", "bank_name",
-                  "bank_account_no", "bank_ifsc", "terms_conditions"):
-        val = getattr(body, field, None)
-        if val is not None and hasattr(tenant, field):
-            setattr(tenant, field, val)
+    tenant.company_name       = body.company_name
+    if body.gstin              is not None: tenant.gstin              = body.gstin
+    if body.phone              is not None: tenant.phone              = body.phone
+    if body.email              is not None: tenant.email              = body.email
+    if body.address            is not None: tenant.address            = body.address
+    if body.state              is not None: tenant.state              = body.state
+    if body.logo_url           is not None: tenant.logo_url           = body.logo_url
+    if body.pan                is not None: tenant.pan                = body.pan
+    if body.upi_id             is not None: tenant.upi_id             = body.upi_id
+    if body.qr_code_url        is not None: tenant.qr_code_url        = body.qr_code_url
+    if body.bank_name          is not None: tenant.bank_name          = body.bank_name
+    if body.bank_account_no    is not None: tenant.bank_account_no    = body.bank_account_no
+    if body.bank_ifsc          is not None: tenant.bank_ifsc          = body.bank_ifsc
+    if body.bank_branch        is not None: tenant.bank_branch        = body.bank_branch
+    if body.terms_conditions   is not None: tenant.terms_conditions   = body.terms_conditions
+    if body.authorised_person  is not None: tenant.authorised_person  = body.authorised_person
 
     await db.commit()
     await db.refresh(tenant)
