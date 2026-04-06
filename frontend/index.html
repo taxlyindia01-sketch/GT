@@ -2706,7 +2706,7 @@ document.addEventListener('DOMContentLoaded', function() {
               <div class="fg"><label class="lbl">Phone</label><input class="inp" id="co-phone" placeholder="+91 XXXXX XXXXX" maxlength="15"/></div>
             </div>
             <div class="fr2">
-              <div class="fg"><label class="lbl">Email</label><input class="inp" id="co-email" placeholder="business@example.com" type="email"/></div>
+              <div class="fg"><label class="lbl">Email</label><input class="inp" id="co-email" placeholder="business@example.com"/></div>
               <div class="fg"><label class="lbl">PAN</label><input class="inp" id="co-pan" placeholder="ABCDE1234F" maxlength="10" style="text-transform:uppercase;"/></div>
             </div>
             <div class="fr2">
@@ -6998,7 +6998,7 @@ async function loadCompanyProfile() {
     set('co-gstin',      data.gstin           || '');
     set('co-upi',        data.upi_id          || '');
     set('co-bank-name',  data.bank_name       || '');
-    set('co-bank-acc',   data.bank_account    || '');
+    set('co-bank-acc',   data.bank_account_no || '');
     set('co-bank-ifsc',  data.bank_ifsc       || '');
     set('co-bank-branch',data.bank_branch     || '');
     set('co-terms',      data.terms_conditions|| '');
@@ -7047,7 +7047,7 @@ async function saveCompanyProfile() {
     gstin:             v('co-gstin')       || null,
     upi_id:            v('co-upi')         || null,
     bank_name:         v('co-bank-name')   || null,
-    bank_account:      v('co-bank-acc')    || null,
+    bank_account_no:   v('co-bank-acc')    || null,
     bank_ifsc:         v('co-bank-ifsc').toUpperCase() || null,
     bank_branch:       v('co-bank-branch') || null,
     terms_conditions:  v('co-terms')       || null,
