@@ -51,6 +51,28 @@ async def lifespan(app: FastAPI):
             END $$;
         """))
 
+        # Extra tenant profile columns (added in v4.3)
+        await conn.execute(text("""
+            DO $$
+            DECLARE col TEXT;
+            BEGIN
+                FOREACH col IN ARRAY ARRAY[
+                    'pan', 'upi_id', 'qr_code_url', 'bank_name',
+                    'bank_account_no', 'bank_ifsc', 'bank_branch',
+                    'terms_conditions', 'authorised_person'
+                ] LOOP
+                    IF NOT EXISTS (
+                        SELECT 1 FROM information_schema.columns
+                        WHERE table_name = 'tenants' AND column_name = col
+                    ) THEN
+                        EXECUTE format(
+                            'ALTER TABLE tenants ADD COLUMN %I TEXT', col
+                        );
+                    END IF;
+                END LOOP;
+            END $$;
+        """))
+
     yield
     await engine.dispose()
 
