@@ -380,33 +380,41 @@ section{position:relative;z-index:1;padding:88px 52px;}
 .section-hdr.center .section-sub{margin:0 auto;}
 
 /* ─── FEATURES ────────────────────────────────────── */
+/* ── Image Feature Cards ─────────────────────────────────── */
 .features-grid{
   display:grid;grid-template-columns:repeat(3,1fr);
-  border:1px solid rgba(200,144,10,.15);border-radius:18px;overflow:hidden;
-  background:rgba(200,144,10,.06);gap:1px;
+  gap:24px;
 }
 @media(max-width:900px){.features-grid{grid-template-columns:1fr 1fr;}}
 @media(max-width:560px){.features-grid{grid-template-columns:1fr;}}
 .feat{
-  background:var(--bg1);padding:30px 28px;position:relative;overflow:hidden;
-  transition:background .25s;
+  background:var(--bg1);border-radius:16px;overflow:hidden;position:relative;
+  border:1px solid rgba(200,144,10,.15);
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+  display:flex;flex-direction:column;
 }
 .feat::before{
   content:'';position:absolute;top:0;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(200,144,10,.5),transparent);
-  opacity:0;transition:opacity .3s;
+  background:linear-gradient(90deg,transparent,rgba(200,144,10,.6),transparent);
+  opacity:0;transition:opacity .3s;z-index:2;
 }
-.feat:hover{background:var(--bg2);}
+.feat:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.35),0 0 0 1px rgba(200,144,10,.25);border-color:rgba(200,144,10,.35);}
 .feat:hover::before{opacity:1;}
-.feat-icon-wrap{
-  width:46px;height:46px;border-radius:13px;margin-bottom:18px;
-  background:rgba(200,144,10,.09);border:1px solid rgba(200,144,10,.2);
-  display:flex;align-items:center;justify-content:center;font-size:21px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+.feat-img-wrap{
+  width:100%;aspect-ratio:16/9;overflow:hidden;position:relative;
+  background:rgba(200,144,10,.04);border-bottom:1px solid rgba(200,144,10,.12);
+  flex-shrink:0;
 }
-.feat-h{font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text);margin-bottom:9px;}
-.feat-p{font-size:13px;color:var(--muted);line-height:1.72;}
-.feat-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:14px;}
+.feat-img-wrap svg{width:100%;height:100%;}
+.feat-body{padding:22px 22px 20px;display:flex;flex-direction:column;flex:1;}
+.feat-icon-wrap{
+  width:38px;height:38px;border-radius:10px;margin-bottom:13px;flex-shrink:0;
+  background:rgba(200,144,10,.09);border:1px solid rgba(200,144,10,.2);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.feat-h{font-family:var(--serif);font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;}
+.feat-p{font-size:12.5px;color:var(--muted);line-height:1.72;flex:1;}
+.feat-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:13px;}
 .ftag{
   font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;
   background:rgba(200,144,10,.09);color:var(--gold2);border:1px solid rgba(200,144,10,.22);letter-spacing:.2px;
@@ -1573,60 +1581,478 @@ img{max-width:100%;height:auto;}
     <div class="section-sub">Not a generic CRM adapted for jewellery — purpose-built from the ground up for Indian gold &amp; jewellery traders.</div>
   </div>
   <div class="features-grid reveal reveal-d1">
+
+    <!-- 1. GST Invoicing -->
     <div class="feat">
-      <div class="feat-icon-wrap">🧾</div>
-      <div class="feat-h">GST Invoicing</div>
-      <div class="feat-p">Professional GST invoices with auto CGST+SGST or IGST at 3%. HSN 7113 pre-filled. Instant PDF preview &amp; download. Multi-item invoices with Gold, Silver, Diamond &amp; Polish Charges.</div>
-      <div class="feat-tags"><span class="ftag">GSTR-1</span><span class="ftag">PDF Export</span><span class="ftag">GST 3%</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Invoice card -->
+          <rect x="20" y="14" width="340" height="186" rx="8" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <!-- Header bar -->
+          <rect x="20" y="14" width="340" height="36" rx="8" fill="#c8900a" opacity=".9"/>
+          <rect x="20" y="36" width="340" height="14" fill="#c8900a" opacity=".9"/>
+          <text x="36" y="37" font-family="serif" font-size="13" font-weight="700" fill="#fff">TAX INVOICE</text>
+          <text x="280" y="37" font-family="monospace" font-size="10" fill="rgba(255,255,255,.8)">INV-7-0042</text>
+          <!-- Bill to -->
+          <text x="36" y="66" font-family="sans-serif" font-size="8" fill="rgba(200,144,10,.7)" letter-spacing="1">BILL TO</text>
+          <text x="36" y="78" font-family="serif" font-size="11" font-weight="700" fill="#e8d5a0">Ramesh Kumar</text>
+          <text x="36" y="89" font-family="sans-serif" font-size="8" fill="rgba(200,200,200,.5)">Mobile: 9876543210  |  Delhi</text>
+          <!-- Table header -->
+          <rect x="28" y="98" width="324" height="16" rx="3" fill="rgba(200,144,10,.15)"/>
+          <text x="36" y="110" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.9)">#</text>
+          <text x="52" y="110" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.9)">Description</text>
+          <text x="200" y="110" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.9)">Qty</text>
+          <text x="240" y="110" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.9)">Rate</text>
+          <text x="295" y="110" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.9)" text-anchor="end">Amount</text>
+          <!-- Row 1 -->
+          <text x="36" y="123" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.8)">1</text>
+          <text x="52" y="123" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.8)">Gold Ring 22K</text>
+          <text x="200" y="123" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.7)">10 grm</text>
+          <text x="240" y="123" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.7)">₹8,500</text>
+          <text x="295" y="123" font-family="sans-serif" font-size="7.5" fill="#e8d5a0" text-anchor="end" font-weight="600">₹85,000</text>
+          <!-- Row 2 -->
+          <rect x="28" y="127" width="324" height="14" fill="rgba(200,144,10,.04)"/>
+          <text x="36" y="138" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.8)">2</text>
+          <text x="52" y="138" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.8)">Silver Bangle</text>
+          <text x="200" y="138" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.7)">50 grm</text>
+          <text x="240" y="138" font-family="sans-serif" font-size="7.5" fill="rgba(220,220,220,.7)">₹120</text>
+          <text x="295" y="138" font-family="sans-serif" font-size="7.5" fill="#e8d5a0" text-anchor="end" font-weight="600">₹6,000</text>
+          <!-- Totals -->
+          <line x1="28" y1="148" x2="352" y2="148" stroke="rgba(200,144,10,.2)" stroke-width=".5"/>
+          <text x="240" y="159" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.7)">Subtotal</text>
+          <text x="346" y="159" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.8)" text-anchor="end">₹91,000</text>
+          <text x="240" y="170" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.7)">CGST + SGST (3%)</text>
+          <text x="346" y="170" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.8)" text-anchor="end">₹2,730</text>
+          <rect x="220" y="175" width="132" height="18" rx="3" fill="rgba(200,144,10,.18)"/>
+          <text x="228" y="188" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#c8900a">Grand Total</text>
+          <text x="346" y="188" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#c8900a" text-anchor="end">₹93,730</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">🧾</div>
+        <div class="feat-h">GST Invoicing</div>
+        <div class="feat-p">Professional GST invoices with auto CGST+SGST or IGST at 3%. HSN 7113 pre-filled. Instant PDF preview &amp; download. Multi-item with Gold, Silver, Diamond &amp; Polish.</div>
+        <div class="feat-tags"><span class="ftag">GSTR-1</span><span class="ftag">PDF Export</span><span class="ftag">GST 3%</span></div>
+      </div>
     </div>
+
+    <!-- 2. 269ST Compliance -->
     <div class="feat">
-      <div class="feat-icon-wrap">⚖️</div>
-      <div class="feat-h">269ST Compliance</div>
-      <div class="feat-p">Auto-flags every cash receipt ≥ ₹2,00,000. Real-time warning on invoice entry. Sec 269ST violation register exported to Excel — ready for your CA or tax audit.</div>
-      <div class="feat-tags"><span class="ftag ftag-r">Cash Limit</span><span class="ftag ftag-r">Penalty Alert</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Alert card -->
+          <rect x="20" y="20" width="340" height="60" rx="8" fill="rgba(239,68,68,.08)" stroke="rgba(239,68,68,.35)" stroke-width="1.5"/>
+          <text x="38" y="42" font-family="sans-serif" font-size="11" font-weight="700" fill="#ef4444">⚠ 269ST Cash Limit Alert</text>
+          <text x="38" y="57" font-family="sans-serif" font-size="9" fill="rgba(239,68,68,.75)">Cash receipt ₹2,50,000 exceeds ₹2,00,000 limit</text>
+          <text x="38" y="70" font-family="sans-serif" font-size="8" fill="rgba(239,68,68,.5)">PAN mandatory · Sec 269ST violation risk</text>
+          <!-- Register table -->
+          <rect x="20" y="92" width="340" height="16" rx="4" fill="rgba(200,144,10,.15)"/>
+          <text x="28" y="104" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.9)">DATE</text>
+          <text x="80" y="104" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.9)">INVOICE</text>
+          <text x="148" y="104" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.9)">CUSTOMER</text>
+          <text x="248" y="104" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.9)">CASH AMT</text>
+          <text x="318" y="104" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.9)">STATUS</text>
+          <!-- rows -->
+          <text x="28" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">30-03-26</text>
+          <text x="80" y="118" font-family="monospace" font-size="7" fill="#c8900a">INV-042</text>
+          <text x="148" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">Ramesh K.</text>
+          <text x="248" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">₹2,50,000</text>
+          <rect x="314" y="111" width="38" height="11" rx="3" fill="rgba(239,68,68,.2)"/>
+          <text x="317" y="120" font-family="sans-serif" font-size="6.5" fill="#ef4444" font-weight="700">VIOLATION</text>
+          <rect x="20" y="122" width="340" height="14" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="133" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">29-03-26</text>
+          <text x="80" y="133" font-family="monospace" font-size="7" fill="#c8900a">INV-039</text>
+          <text x="148" y="133" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">Sunita P.</text>
+          <text x="248" y="133" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.7)">₹1,80,000</text>
+          <rect x="314" y="126" width="34" height="11" rx="3" fill="rgba(34,197,94,.15)"/>
+          <text x="317" y="135" font-family="sans-serif" font-size="6.5" fill="#22c55e" font-weight="700">OK</text>
+          <!-- Excel button -->
+          <rect x="268" y="152" width="84" height="24" rx="5" fill="rgba(34,197,94,.15)" stroke="rgba(34,197,94,.3)" stroke-width="1"/>
+          <text x="276" y="168" font-family="sans-serif" font-size="9" fill="#22c55e" font-weight="600">📥 Export Excel</text>
+          <!-- stat -->
+          <text x="28" y="168" font-family="sans-serif" font-size="20" font-weight="700" fill="#ef4444">3</text>
+          <text x="52" y="162" font-family="sans-serif" font-size="8" fill="rgba(239,68,68,.7)">violations</text>
+          <text x="52" y="173" font-family="sans-serif" font-size="8" fill="rgba(200,200,200,.4)">this FY</text>
+          <!-- bar chart mini -->
+          <rect x="28" y="180" width="14" height="20" fill="rgba(239,68,68,.3)" rx="2"/>
+          <rect x="48" y="186" width="14" height="14" fill="rgba(239,68,68,.2)" rx="2"/>
+          <rect x="68" y="175" width="14" height="25" fill="rgba(239,68,68,.4)" rx="2"/>
+          <rect x="88" y="183" width="14" height="17" fill="rgba(239,68,68,.25)" rx="2"/>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">⚖️</div>
+        <div class="feat-h">269ST Compliance</div>
+        <div class="feat-p">Auto-flags every cash receipt ≥ ₹2,00,000. Real-time warning on invoice entry. Sec 269ST violation register exported to Excel — ready for your CA or tax audit.</div>
+        <div class="feat-tags"><span class="ftag ftag-r">Cash Limit</span><span class="ftag ftag-r">Penalty Alert</span></div>
+      </div>
     </div>
+
+    <!-- 3. SFT Form 61A -->
     <div class="feat">
-      <div class="feat-icon-wrap">📋</div>
-      <div class="feat-h">SFT Form 61A</div>
-      <div class="feat-p">Tracks cumulative cash receipts per customer per FY. Auto-flags when PAN becomes mandatory (above ₹2L cash). SFT register export in Excel format, CA-ready.</div>
-      <div class="feat-tags"><span class="ftag">Form 61A</span><span class="ftag">PAN Tracking</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Header -->
+          <rect x="20" y="16" width="340" height="28" rx="6" fill="rgba(200,144,10,.12)" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="34" y="35" font-family="serif" font-size="12" font-weight="700" fill="#c8900a">SFT Form 61A — PAN Tracker</text>
+          <!-- Progress bars per customer -->
+          <text x="28" y="62" font-family="sans-serif" font-size="8" fill="rgba(180,180,180,.6)">Ramesh Kumar</text>
+          <text x="290" y="62" font-family="sans-serif" font-size="8" fill="#ef4444" font-weight="600">₹2,40,000</text>
+          <rect x="28" y="66" width="260" height="6" rx="3" fill="rgba(200,144,10,.1)"/>
+          <rect x="28" y="66" width="240" height="6" rx="3" fill="rgba(239,68,68,.6)"/>
+          <text x="292" y="73" font-family="sans-serif" font-size="6.5" fill="rgba(239,68,68,.7)">⚠ PAN req.</text>
+          <text x="28" y="88" font-family="sans-serif" font-size="8" fill="rgba(180,180,180,.6)">Sunita Patel</text>
+          <text x="290" y="88" font-family="sans-serif" font-size="8" fill="#c8900a" font-weight="600">₹1,60,000</text>
+          <rect x="28" y="92" width="260" height="6" rx="3" fill="rgba(200,144,10,.1)"/>
+          <rect x="28" y="92" width="166" height="6" rx="3" fill="rgba(200,144,10,.55)"/>
+          <text x="28" y="113" font-family="sans-serif" font-size="8" fill="rgba(180,180,180,.6)">Ankit Sharma</text>
+          <text x="290" y="113" font-family="sans-serif" font-size="8" fill="#22c55e" font-weight="600">₹80,000</text>
+          <rect x="28" y="117" width="260" height="6" rx="3" fill="rgba(200,144,10,.1)"/>
+          <rect x="28" y="117" width="104" height="6" rx="3" fill="rgba(34,197,94,.4)"/>
+          <text x="28" y="138" font-family="sans-serif" font-size="8" fill="rgba(180,180,180,.6)">Meena Gupta</text>
+          <text x="290" y="138" font-family="sans-serif" font-size="8" fill="#22c55e" font-weight="600">₹45,000</text>
+          <rect x="28" y="142" width="260" height="6" rx="3" fill="rgba(200,144,10,.1)"/>
+          <rect x="28" y="142" width="59" height="6" rx="3" fill="rgba(34,197,94,.3)"/>
+          <!-- threshold line -->
+          <line x1="236" y1="58" x2="236" y2="152" stroke="rgba(239,68,68,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+          <text x="238" y="57" font-family="sans-serif" font-size="6" fill="rgba(239,68,68,.6)">₹2L limit</text>
+          <!-- Export btn -->
+          <rect x="20" y="162" width="340" height="30" rx="6" fill="rgba(200,144,10,.08)" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="34" y="181" font-family="sans-serif" font-size="9" fill="rgba(200,200,200,.7)">📋 SFT Register · 4 reportable customers · FY 2025–26</text>
+          <rect x="294" y="167" width="58" height="18" rx="4" fill="rgba(200,144,10,.2)"/>
+          <text x="302" y="180" font-family="sans-serif" font-size="8.5" fill="#c8900a" font-weight="600">Export</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">📋</div>
+        <div class="feat-h">SFT Form 61A</div>
+        <div class="feat-p">Tracks cumulative cash receipts per customer per FY. Auto-flags when PAN becomes mandatory (above ₹2L cash). SFT register export in Excel format, CA-ready.</div>
+        <div class="feat-tags"><span class="ftag">Form 61A</span><span class="ftag">PAN Tracking</span></div>
+      </div>
     </div>
+
+    <!-- 4. FIFO Stock -->
     <div class="feat">
-      <div class="feat-icon-wrap">📦</div>
-      <div class="feat-h">FIFO Stock Ledger</div>
-      <div class="feat-p">Real-time inventory for Gold, Silver, Diamond. FIFO valuation with invoice-wise movement register — category summary, per-lot avg rate, and full Excel export.</div>
-      <div class="feat-tags"><span class="ftag">FIFO Value</span><span class="ftag">Invoice-wise</span><span class="ftag">Multi-category</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Stock cards row -->
+          <rect x="20" y="16" width="100" height="52" rx="7" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="30" y="33" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.7)" letter-spacing=".5">GOLD</text>
+          <text x="30" y="48" font-family="serif" font-size="16" font-weight="700" fill="#e8d5a0">248.5</text>
+          <text x="30" y="60" font-family="sans-serif" font-size="7" fill="rgba(200,200,200,.4)">grm on hand</text>
+          <rect x="140" y="16" width="100" height="52" rx="7" fill="#0d1e35" stroke="rgba(150,150,200,.2)" stroke-width="1"/>
+          <text x="150" y="33" font-family="sans-serif" font-size="7.5" fill="rgba(160,160,220,.7)" letter-spacing=".5">SILVER</text>
+          <text x="150" y="48" font-family="serif" font-size="16" font-weight="700" fill="#c8d4e8">1,240</text>
+          <text x="150" y="60" font-family="sans-serif" font-size="7" fill="rgba(200,200,200,.4)">grm on hand</text>
+          <rect x="260" y="16" width="100" height="52" rx="7" fill="#0d1e35" stroke="rgba(100,200,200,.15)" stroke-width="1"/>
+          <text x="270" y="33" font-family="sans-serif" font-size="7.5" fill="rgba(100,200,200,.6)" letter-spacing=".5">DIAMOND</text>
+          <text x="270" y="48" font-family="serif" font-size="16" font-weight="700" fill="#a0d4d4">32.4</text>
+          <text x="270" y="60" font-family="sans-serif" font-size="7" fill="rgba(200,200,200,.4)">crt on hand</text>
+          <!-- FIFO table -->
+          <rect x="20" y="80" width="340" height="14" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="28" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">LOT</text>
+          <text x="70" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">DATE</text>
+          <text x="130" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">QTY IN</text>
+          <text x="190" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">QTY OUT</text>
+          <text x="258" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">RATE (₹)</text>
+          <text x="318" y="91" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">VALUE</text>
+          <text x="28" y="104" font-family="monospace" font-size="7" fill="#c8900a">LOT-12</text>
+          <text x="70" y="104" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">01-03-26</text>
+          <text x="130" y="104" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.7)">+50.000</text>
+          <text x="190" y="104" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.4)">—</text>
+          <text x="258" y="104" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">7,800</text>
+          <text x="318" y="104" font-family="sans-serif" font-size="7.5" fill="#e8d5a0">3,90,000</text>
+          <rect x="20" y="108" width="340" height="13" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="118" font-family="monospace" font-size="7" fill="#c8900a">LOT-11</text>
+          <text x="70" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">15-02-26</text>
+          <text x="130" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.4)">—</text>
+          <text x="190" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(239,68,68,.7)">-12.000</text>
+          <text x="258" y="118" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">7,650</text>
+          <text x="318" y="118" font-family="sans-serif" font-size="7.5" fill="#e8d5a0">91,800</text>
+          <!-- Total bar -->
+          <rect x="20" y="132" width="340" height="20" rx="4" fill="rgba(200,144,10,.1)"/>
+          <text x="28" y="146" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#c8900a">FIFO Closing Value</text>
+          <text x="280" y="146" font-family="serif" font-size="11" font-weight="700" fill="#e8d5a0">₹19,38,200</text>
+          <!-- mini bar chart -->
+          <rect x="28" y="162" width="18" height="36" fill="rgba(200,144,10,.25)" rx="2"/>
+          <rect x="52" y="172" width="18" height="26" fill="rgba(200,144,10,.2)" rx="2"/>
+          <rect x="76" y="158" width="18" height="40" fill="rgba(200,144,10,.35)" rx="2"/>
+          <rect x="100" y="165" width="18" height="33" fill="rgba(200,144,10,.22)" rx="2"/>
+          <rect x="124" y="154" width="18" height="44" fill="rgba(200,144,10,.4)" rx="2"/>
+          <text x="160" y="175" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.4)">FIFO avg rate trend</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">📦</div>
+        <div class="feat-h">FIFO Stock Ledger</div>
+        <div class="feat-p">Real-time inventory for Gold, Silver, Diamond. FIFO valuation with invoice-wise movement register — category summary, per-lot avg rate, and full Excel export.</div>
+        <div class="feat-tags"><span class="ftag">FIFO Value</span><span class="ftag">Invoice-wise</span><span class="ftag">Multi-category</span></div>
+      </div>
     </div>
+
+    <!-- 5. Customer Ledger -->
     <div class="feat">
-      <div class="feat-icon-wrap">👥</div>
-      <div class="feat-h">Customer Ledger</div>
-      <div class="feat-p">Complete per-customer history — all invoices, payments, and advances in one view. Outstanding always current. Excel ledger download per customer.</div>
-      <div class="feat-tags"><span class="ftag">Excel Download</span><span class="ftag">Live Balance</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- KPI row -->
+          <rect x="20" y="16" width="100" height="46" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.15)" stroke-width="1"/>
+          <text x="30" y="33" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Total Invoiced</text>
+          <text x="30" y="52" font-family="serif" font-size="13" font-weight="700" fill="#e8d5a0">₹4,82,500</text>
+          <rect x="140" y="16" width="100" height="46" rx="6" fill="#0d1e35" stroke="rgba(34,197,94,.15)" stroke-width="1"/>
+          <text x="150" y="33" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Total Paid</text>
+          <text x="150" y="52" font-family="serif" font-size="13" font-weight="700" fill="#22c55e">₹3,20,000</text>
+          <rect x="260" y="16" width="100" height="46" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.25)" stroke-width="1"/>
+          <text x="270" y="33" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Outstanding</text>
+          <text x="270" y="52" font-family="serif" font-size="13" font-weight="700" fill="#c8900a">₹1,62,500</text>
+          <!-- Ledger table -->
+          <rect x="20" y="74" width="340" height="14" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="28" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">DATE</text>
+          <text x="90" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">TYPE</text>
+          <text x="170" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">REF</text>
+          <text x="248" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">DEBIT</text>
+          <text x="298" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)">CREDIT</text>
+          <text x="346" y="85" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.8)" text-anchor="end">BAL</text>
+          <!-- rows -->
+          <text x="28" y="99" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.6)">01-03</text>
+          <rect x="86" y="92" width="36" height="11" rx="3" fill="rgba(59,130,246,.15)"/>
+          <text x="89" y="101" font-family="sans-serif" font-size="6.5" fill="#60a5fa">Invoice</text>
+          <text x="170" y="99" font-family="monospace" font-size="7" fill="#c8900a">INV-035</text>
+          <text x="248" y="99" font-family="sans-serif" font-size="7.5" fill="rgba(220,100,100,.8)">₹1,62,500</text>
+          <text x="298" y="99" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.3)">—</text>
+          <text x="346" y="99" font-family="sans-serif" font-size="7.5" fill="#c8900a" text-anchor="end">₹1,62,500</text>
+          <rect x="20" y="103" width="340" height="13" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="113" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.6)">15-03</text>
+          <rect x="86" y="106" width="40" height="11" rx="3" fill="rgba(34,197,94,.1)"/>
+          <text x="89" y="115" font-family="sans-serif" font-size="6.5" fill="#22c55e">Payment</text>
+          <text x="170" y="113" font-family="monospace" font-size="7" fill="#c8900a">PMT-12</text>
+          <text x="248" y="113" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.3)">—</text>
+          <text x="298" y="113" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.8)">₹1,20,000</text>
+          <text x="346" y="113" font-family="sans-serif" font-size="7.5" fill="#c8900a" text-anchor="end">₹42,500</text>
+          <text x="28" y="127" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.6)">20-03</text>
+          <rect x="86" y="120" width="36" height="11" rx="3" fill="rgba(251,191,36,.1)"/>
+          <text x="89" y="129" font-family="sans-serif" font-size="6.5" fill="#fbbf24">Advance</text>
+          <text x="170" y="127" font-family="monospace" font-size="7" fill="#c8900a">ADV-05</text>
+          <text x="248" y="127" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.3)">—</text>
+          <text x="298" y="127" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.8)">₹42,500</text>
+          <text x="346" y="127" font-family="sans-serif" font-size="7.5" fill="#22c55e" text-anchor="end">₹0.00</text>
+          <!-- settled badge -->
+          <rect x="20" y="142" width="340" height="20" rx="4" fill="rgba(34,197,94,.08)" stroke="rgba(34,197,94,.2)" stroke-width="1"/>
+          <text x="34" y="156" font-family="sans-serif" font-size="9" font-weight="600" fill="#22c55e">✓ Account Fully Settled</text>
+          <!-- excel btn -->
+          <rect x="288" y="170" width="74" height="24" rx="5" fill="rgba(200,144,10,.15)" stroke="rgba(200,144,10,.3)" stroke-width="1"/>
+          <text x="296" y="186" font-family="sans-serif" font-size="9" fill="#c8900a" font-weight="600">Excel Ledger</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">👥</div>
+        <div class="feat-h">Customer Ledger</div>
+        <div class="feat-p">Complete per-customer history — all invoices, payments, and advances in one view. Outstanding always current. Excel ledger download per customer.</div>
+        <div class="feat-tags"><span class="ftag">Excel Download</span><span class="ftag">Live Balance</span></div>
+      </div>
     </div>
+
+    <!-- 6. Supplier Management -->
     <div class="feat">
-      <div class="feat-icon-wrap">🏭</div>
-      <div class="feat-h">Supplier Management</div>
-      <div class="feat-p">Full purchase invoice management with GST. Supplier payments, advances, outstanding balance per invoice. GSTR-2B purchase register. Supplier ledger with Excel.</div>
-      <div class="feat-tags"><span class="ftag">GSTR-2B</span><span class="ftag">Purchase Register</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Header -->
+          <rect x="20" y="16" width="340" height="28" rx="6" fill="rgba(200,144,10,.1)" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="34" y="35" font-family="serif" font-size="12" font-weight="700" fill="#c8900a">🏭 Gautam Jewellers · 9999635471</text>
+          <!-- supplier KPIs -->
+          <rect x="20" y="52" width="100" height="36" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.12)" stroke-width="1"/>
+          <text x="30" y="66" font-family="sans-serif" font-size="6.5" fill="rgba(180,180,180,.5)">Total Invoiced</text>
+          <text x="30" y="80" font-family="serif" font-size="11" font-weight="700" fill="#e8d5a0">₹7,98,250</text>
+          <rect x="140" y="52" width="100" height="36" rx="5" fill="#0d1e35" stroke="rgba(34,197,94,.12)" stroke-width="1"/>
+          <text x="150" y="66" font-family="sans-serif" font-size="6.5" fill="rgba(180,180,180,.5)">Total Paid</text>
+          <text x="150" y="80" font-family="serif" font-size="11" font-weight="700" fill="#22c55e">₹5,20,000</text>
+          <rect x="260" y="52" width="100" height="36" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.25)" stroke-width="1"/>
+          <text x="270" y="66" font-family="sans-serif" font-size="6.5" fill="rgba(180,180,180,.5)">Outstanding</text>
+          <text x="270" y="80" font-family="serif" font-size="11" font-weight="700" fill="#c8900a">₹2,78,250</text>
+          <!-- Ledger rows -->
+          <rect x="20" y="98" width="340" height="12" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="28" y="108" font-family="sans-serif" font-size="6.5" fill="rgba(200,144,10,.8)">DATE  ·  TYPE  ·  REFERENCE  ·  DEBIT  ·  CREDIT  ·  BALANCE</text>
+          <text x="28" y="121" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">2026-03-30  Purchase Invoice  GO/2025-26/1</text>
+          <text x="290" y="121" font-family="sans-serif" font-size="7.5" fill="rgba(220,100,100,.7)">₹7,98,250</text>
+          <rect x="20" y="125" width="340" height="12" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="134" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">2026-03-30  Payment  GO/2025-26/1</text>
+          <text x="298" y="134" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.7)">₹5,00,000</text>
+          <text x="28" y="147" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">2026-03-30  Advance  ADV-4</text>
+          <text x="298" y="147" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.7)">₹10,000</text>
+          <!-- GSTR2B badge -->
+          <rect x="20" y="158" width="160" height="20" rx="4" fill="rgba(200,144,10,.08)" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="30" y="172" font-family="sans-serif" font-size="8.5" fill="#c8900a" font-weight="600">📄 GSTR-2B Purchase Register</text>
+          <rect x="200" y="158" width="160" height="20" rx="4" fill="rgba(34,197,94,.08)" stroke="rgba(34,197,94,.2)" stroke-width="1"/>
+          <text x="210" y="172" font-family="sans-serif" font-size="8.5" fill="#22c55e" font-weight="600">📥 Download Excel Ledger</text>
+          <!-- bottom caption -->
+          <text x="28" y="200" font-family="sans-serif" font-size="7.5" fill="rgba(200,144,10,.5)">Amount Due to Supplier: ₹2,78,250</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">🏭</div>
+        <div class="feat-h">Supplier Management</div>
+        <div class="feat-p">Full purchase invoice management with GST. Supplier payments, advances, outstanding balance per invoice. GSTR-2B purchase register. Supplier ledger with Excel.</div>
+        <div class="feat-tags"><span class="ftag">GSTR-2B</span><span class="ftag">Purchase Register</span></div>
+      </div>
     </div>
+
+    <!-- 7. Advance Management -->
     <div class="feat">
-      <div class="feat-icon-wrap">💳</div>
-      <div class="feat-h">Advance Management</div>
-      <div class="feat-p">Record customer and supplier advances. Allocate against invoices to reduce outstanding. Per-customer advance balance always visible. Advance register in Excel.</div>
-      <div class="feat-tags"><span class="ftag">Allocation</span><span class="ftag">Balance Track</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- advance record form -->
+          <rect x="20" y="16" width="160" height="88" rx="7" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="32" y="33" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#c8900a">Record Advance</text>
+          <text x="32" y="48" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Customer</text>
+          <rect x="32" y="52" width="136" height="12" rx="3" fill="rgba(200,144,10,.08)" stroke="rgba(200,144,10,.15)" stroke-width=".5"/>
+          <text x="38" y="62" font-family="sans-serif" font-size="7" fill="rgba(200,200,200,.6)">Ramesh Kumar</text>
+          <text x="32" y="76" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Amount</text>
+          <rect x="32" y="80" width="136" height="12" rx="3" fill="rgba(200,144,10,.08)" stroke="rgba(200,144,10,.3)" stroke-width=".5"/>
+          <text x="38" y="90" font-family="sans-serif" font-size="7.5" fill="#e8d5a0">₹ 25,000</text>
+          <!-- allocation panel -->
+          <rect x="200" y="16" width="160" height="88" rx="7" fill="#0d1e35" stroke="rgba(34,197,94,.2)" stroke-width="1"/>
+          <text x="212" y="33" font-family="sans-serif" font-size="8.5" font-weight="700" fill="#22c55e">Allocate to Invoice</text>
+          <text x="212" y="50" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">ADV-9 · Remaining: ₹25,000</text>
+          <!-- progress -->
+          <rect x="212" y="56" width="136" height="6" rx="3" fill="rgba(34,197,94,.1)"/>
+          <rect x="212" y="56" width="136" height="6" rx="3" fill="rgba(34,197,94,.5)"/>
+          <text x="212" y="74" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Invoice INV-7-0042</text>
+          <text x="212" y="84" font-family="serif" font-size="10" font-weight="700" fill="#22c55e">₹25,000 applied</text>
+          <!-- advance register -->
+          <rect x="20" y="116" width="340" height="12" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="28" y="126" font-family="sans-serif" font-size="6.5" fill="rgba(200,144,10,.8)">REF  ·  DATE  ·  CUSTOMER  ·  AMOUNT  ·  REMAINING  ·  STATUS</text>
+          <text x="28" y="140" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">ADV-9  ·  30-03  ·  Ramesh K.</text>
+          <text x="228" y="140" font-family="sans-serif" font-size="7.5" fill="#e8d5a0">₹25,000</text>
+          <text x="280" y="140" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.4)">₹0</text>
+          <rect x="316" y="133" width="36" height="11" rx="3" fill="rgba(34,197,94,.12)"/>
+          <text x="320" y="142" font-family="sans-serif" font-size="6.5" fill="#22c55e">Cleared</text>
+          <rect x="20" y="144" width="340" height="12" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="154" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">ADV-8  ·  25-03  ·  Sunita P.</text>
+          <text x="228" y="154" font-family="sans-serif" font-size="7.5" fill="#e8d5a0">₹50,000</text>
+          <text x="280" y="154" font-family="sans-serif" font-size="7.5" fill="#c8900a">₹30,000</text>
+          <rect x="316" y="147" width="36" height="11" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="319" y="156" font-family="sans-serif" font-size="6.5" fill="#c8900a">Partial</text>
+          <!-- footer -->
+          <rect x="20" y="170" width="340" height="28" rx="5" fill="rgba(200,144,10,.06)" stroke="rgba(200,144,10,.15)" stroke-width="1"/>
+          <text x="34" y="186" font-family="sans-serif" font-size="8.5" fill="rgba(200,200,200,.6)">Total Advances Given: <tspan fill="#e8d5a0" font-weight="700">₹75,000</tspan>  ·  Outstanding: <tspan fill="#c8900a" font-weight="700">₹30,000</tspan></text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">💳</div>
+        <div class="feat-h">Advance Management</div>
+        <div class="feat-p">Record customer and supplier advances. Allocate against invoices to reduce outstanding. Per-customer advance balance always visible. Advance register in Excel.</div>
+        <div class="feat-tags"><span class="ftag">Allocation</span><span class="ftag">Balance Track</span></div>
+      </div>
     </div>
+
+    <!-- 8. Cash Book -->
     <div class="feat">
-      <div class="feat-icon-wrap">🏦</div>
-      <div class="feat-h">Cash Book</div>
-      <div class="feat-p">Day-wise cash and bank entries. Cash-in, cash-out, cash-to-bank, bank deposits. Opening balance support. Running balance always calculated. Full reconciliation export.</div>
-      <div class="feat-tags"><span class="ftag">Opening Balance</span><span class="ftag">Reconciliation</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Balance indicator -->
+          <rect x="20" y="14" width="160" height="52" rx="7" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="32" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.5)">Cash Balance</text>
+          <text x="32" y="52" font-family="serif" font-size="19" font-weight="700" fill="#e8d5a0">₹48,320</text>
+          <rect x="200" y="14" width="160" height="52" rx="7" fill="#0d1e35" stroke="rgba(100,160,240,.2)" stroke-width="1"/>
+          <text x="212" y="32" font-family="sans-serif" font-size="7.5" fill="rgba(180,180,180,.5)">Bank Balance</text>
+          <text x="212" y="52" font-family="serif" font-size="19" font-weight="700" fill="#93b8f0">₹3,42,500</text>
+          <!-- Cash flow chart -->
+          <rect x="20" y="78" width="340" height="60" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.1)" stroke-width="1"/>
+          <!-- bars -->
+          <rect x="36"  y="120" width="14" height="10" fill="rgba(34,197,94,.4)"  rx="2"/>
+          <rect x="56"  y="108" width="14" height="22" fill="rgba(34,197,94,.5)"  rx="2"/>
+          <rect x="76"  y="100" width="14" height="30" fill="rgba(34,197,94,.6)"  rx="2"/>
+          <rect x="96"  y="112" width="14" height="18" fill="rgba(34,197,94,.45)" rx="2"/>
+          <rect x="116" y="96"  width="14" height="34" fill="rgba(34,197,94,.65)" rx="2"/>
+          <rect x="136" y="104" width="14" height="26" fill="rgba(34,197,94,.5)"  rx="2"/>
+          <rect x="36"  y="108" width="14" height="5"  fill="rgba(239,68,68,.4)"  rx="1"/>
+          <rect x="56"  y="114" width="14" height="8"  fill="rgba(239,68,68,.4)"  rx="1"/>
+          <rect x="76"  y="118" width="14" height="12" fill="rgba(239,68,68,.45)" rx="1"/>
+          <rect x="96"  y="108" width="14" height="4"  fill="rgba(239,68,68,.3)"  rx="1"/>
+          <rect x="116" y="116" width="14" height="14" fill="rgba(239,68,68,.5)"  rx="1"/>
+          <rect x="136" y="110" width="14" height="7"  fill="rgba(239,68,68,.4)"  rx="1"/>
+          <text x="166" y="99"  font-family="sans-serif" font-size="7" fill="rgba(34,197,94,.7)">● Cash In</text>
+          <text x="166" y="111" font-family="sans-serif" font-size="7" fill="rgba(239,68,68,.7)">● Cash Out</text>
+          <text x="166" y="126" font-family="serif" font-size="11" font-weight="700" fill="#e8d5a0">₹4,82,000</text>
+          <text x="166" y="136" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.4)">total inflow this month</text>
+          <!-- Entries table -->
+          <rect x="20" y="150" width="340" height="12" rx="3" fill="rgba(200,144,10,.12)"/>
+          <text x="28" y="160" font-family="sans-serif" font-size="6.5" fill="rgba(200,144,10,.8)">DATE  ·  TYPE  ·  DESCRIPTION  ·  AMOUNT  ·  BALANCE</text>
+          <text x="28" y="174" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">30-03  Cash In  Invoice Receipt INV-042</text>
+          <text x="296" y="174" font-family="sans-serif" font-size="7.5" fill="rgba(34,197,94,.7)">+₹93,730</text>
+          <rect x="20" y="177" width="340" height="12" fill="rgba(200,144,10,.04)"/>
+          <text x="28" y="188" font-family="sans-serif" font-size="7.5" fill="rgba(200,200,200,.6)">30-03  Cash to Bank  Deposit HDFC</text>
+          <text x="296" y="188" font-family="sans-serif" font-size="7.5" fill="rgba(239,68,68,.7)">-₹50,000</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">🏦</div>
+        <div class="feat-h">Cash Book</div>
+        <div class="feat-p">Day-wise cash and bank entries. Cash-in, cash-out, cash-to-bank, bank deposits. Opening balance support. Running balance always calculated. Full reconciliation export.</div>
+        <div class="feat-tags"><span class="ftag">Opening Balance</span><span class="ftag">Reconciliation</span></div>
+      </div>
     </div>
+
+    <!-- 9. Reports Suite -->
     <div class="feat">
-      <div class="feat-icon-wrap">📊</div>
-      <div class="feat-h">Reports &amp; Excel Suite</div>
-      <div class="feat-p">12+ one-click reports: Sales Register, GSTR-1, GSTR-2B, Outstanding, Payments, 269ST, SFT, Cash Book, Customer A/C, Supplier A/C, FIFO — colour-coded Excel with charts.</div>
-      <div class="feat-tags"><span class="ftag">12+ Reports</span><span class="ftag">Charts</span><span class="ftag">One-click</span></div>
+      <div class="feat-img-wrap">
+        <svg viewBox="0 0 380 214" xmlns="http://www.w3.org/2000/svg">
+          <rect width="380" height="214" fill="#0a1628"/>
+          <!-- Report grid -->
+          <rect x="20" y="14" width="78" height="42" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="30" y="30" font-family="sans-serif" font-size="7" fill="#c8900a">📊 Sales</text>
+          <text x="30" y="44" font-family="sans-serif" font-size="9" font-weight="700" fill="#e8d5a0">Register</text>
+          <rect x="108" y="14" width="78" height="42" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="118" y="30" font-family="sans-serif" font-size="7" fill="#c8900a">🧾 GSTR-1</text>
+          <text x="118" y="44" font-family="sans-serif" font-size="9" font-weight="700" fill="#e8d5a0">Export</text>
+          <rect x="196" y="14" width="78" height="42" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="206" y="30" font-family="sans-serif" font-size="7" fill="#c8900a">📦 GSTR-2B</text>
+          <text x="206" y="44" font-family="sans-serif" font-size="9" font-weight="700" fill="#e8d5a0">Purchase</text>
+          <rect x="284" y="14" width="76" height="42" rx="5" fill="#0d1e35" stroke="rgba(200,144,10,.2)" stroke-width="1"/>
+          <text x="294" y="30" font-family="sans-serif" font-size="7" fill="#c8900a">⚖️ 269ST</text>
+          <text x="294" y="44" font-family="sans-serif" font-size="9" font-weight="700" fill="#e8d5a0">Violations</text>
+          <!-- Chart preview -->
+          <rect x="20" y="66" width="200" height="90" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.12)" stroke-width="1"/>
+          <text x="30" y="82" font-family="sans-serif" font-size="7.5" font-weight="600" fill="#c8900a">Monthly Sales — FY 2025-26</text>
+          <!-- chart bars -->
+          <rect x="32"  y="138" width="12" height="18" fill="rgba(200,144,10,.3)" rx="2"/>
+          <rect x="50"  y="130" width="12" height="26" fill="rgba(200,144,10,.4)" rx="2"/>
+          <rect x="68"  y="120" width="12" height="36" fill="rgba(200,144,10,.55)" rx="2"/>
+          <rect x="86"  y="125" width="12" height="31" fill="rgba(200,144,10,.45)" rx="2"/>
+          <rect x="104" y="110" width="12" height="46" fill="rgba(200,144,10,.65)" rx="2"/>
+          <rect x="122" y="118" width="12" height="38" fill="rgba(200,144,10,.5)" rx="2"/>
+          <rect x="140" y="100" width="12" height="56" fill="rgba(200,144,10,.75)" rx="2"/>
+          <rect x="158" y="108" width="12" height="48" fill="rgba(200,144,10,.6)" rx="2"/>
+          <rect x="176" y="115" width="12" height="41" fill="rgba(200,144,10,.52)" rx="2"/>
+          <text x="32" y="151" font-family="sans-serif" font-size="5.5" fill="rgba(180,180,180,.4)">Apr May Jun Jul Aug Sep Oct Nov Dec</text>
+          <!-- right panel -->
+          <rect x="230" y="66" width="130" height="42" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.12)" stroke-width="1"/>
+          <text x="240" y="82" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Total Invoiced FY</text>
+          <text x="240" y="98" font-family="serif" font-size="14" font-weight="700" fill="#e8d5a0">₹84,32,500</text>
+          <rect x="230" y="116" width="130" height="40" rx="6" fill="#0d1e35" stroke="rgba(200,144,10,.12)" stroke-width="1"/>
+          <text x="240" y="132" font-family="sans-serif" font-size="7" fill="rgba(180,180,180,.5)">Outstanding</text>
+          <text x="240" y="148" font-family="serif" font-size="14" font-weight="700" fill="#c8900a">₹12,40,000</text>
+          <!-- report list -->
+          <rect x="20" y="166" width="340" height="28" rx="5" fill="rgba(200,144,10,.06)" stroke="rgba(200,144,10,.15)" stroke-width="1"/>
+          <text x="32" y="177" font-family="sans-serif" font-size="6.5" fill="rgba(200,200,200,.5)">Available reports:</text>
+          <text x="32" y="189" font-family="sans-serif" font-size="7" fill="rgba(200,144,10,.7)">Sales  ·  GSTR-1  ·  GSTR-2B  ·  Outstanding  ·  Payments  ·  269ST  ·  SFT  ·  Cash Book  ·  FIFO  ·  +3 more</text>
+        </svg>
+      </div>
+      <div class="feat-body">
+        <div class="feat-icon-wrap">📊</div>
+        <div class="feat-h">Reports &amp; Excel Suite</div>
+        <div class="feat-p">12+ one-click reports: Sales Register, GSTR-1, GSTR-2B, Outstanding, Payments, 269ST, SFT, Cash Book, Customer A/C, Supplier A/C, FIFO — colour-coded Excel with charts.</div>
+        <div class="feat-tags"><span class="ftag">12+ Reports</span><span class="ftag">Charts</span><span class="ftag">One-click</span></div>
+      </div>
     </div>
+
   </div>
 </section>
 
@@ -5006,7 +5432,8 @@ async function previewInvoice(id) {
     inv.pay_mode = (inv.pay_mode||'').replace('PayModeEnum.','').replace('PayMode.','');
     inv.gst_type = (inv.gst_type||'').replace('GSTTypeEnum.','').replace('GSTType.','');
     const items = itemsRes.items || itemsRes || [];
-    window._cachedInvoice = inv;   // cache for amend pre-fill
+    window._cachedInvoice = inv;              // cache for amend pre-fill
+    window._cachedInvoiceItems = { invoiceId: id, items };  // cache to avoid duplicate /items call
     el.innerHTML = buildPDF(inv, items, co);
   } catch(e) { el.innerHTML = `<div style="color:var(--red);padding:16px;">Error loading invoice: ${esc(e.message)}</div>`; }
 }
@@ -6499,7 +6926,7 @@ async function submitSupport() {
   // Just open a mailto for now (backend SMTP not yet wired)
   const subject = encodeURIComponent('[GoldTrader Pro Support] ' + v('sup-type'));
   const body = encodeURIComponent(`Name: ${name}\nContact: ${contact}\n\nMessage:\n${msg}`);
-  window.open(`mailto:info@goldtraderpro.in?subject=${subject}&body=${body}`, '_blank');
+  window.open(`mailto:support@goldtraderpro.in?subject=${subject}&body=${body}`, '_blank');
   toast('Support ticket prepared — please send the email','info');
   closeModal('m-support');
 }
@@ -6742,18 +7169,21 @@ function openEditInvoiceFull() {
   const gstRateEl = document.getElementById('ei-gst-rate');
   if (gstRateEl && inv.gst_rate) gstRateEl.value = String(parseFloat(inv.gst_rate));
   document.getElementById('edit-inv-err').style.display = 'none';
-  // Load items
+  // Load items — calcEditInvTotals runs inside addEditItem, no need to call here
   loadEditItems(id);
-  calcEditInvTotals();
   openModal('m-edit-invoice');
 }
 
 async function loadEditItems(invoiceId) {
+  _editItemIdx = 0;  // reset row index counter each time modal opens
   const tbody = document.getElementById('ei-items-body');
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:8px;">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:8px;">Loading…</td></tr>';
   try {
-    const res = await GET('/api/invoices/' + invoiceId + '/items');
-    const items = Array.isArray(res) ? res : (res.items || []);
+    // Re-use items already fetched in previewInvoice to avoid duplicate API call
+    const cached = window._cachedInvoiceItems;
+    const items = (cached && cached.invoiceId === invoiceId)
+      ? cached.items
+      : await GET('/api/invoices/' + invoiceId + '/items').then(r => Array.isArray(r) ? r : (r.items || []));
     tbody.innerHTML = '';
     if (items.length === 0) { addEditItem(); return; }
     items.forEach(item => addEditItem(item));
@@ -7043,12 +7473,12 @@ async function saveCompanyProfile() {
     state:             v('co-state')       || null,
     phone:             v('co-phone')       || null,
     email:             v('co-email')       || null,
-    pan:               v('co-pan').toUpperCase() || null,
+    pan:               (v('co-pan') || '').toUpperCase() || null,
     gstin:             v('co-gstin')       || null,
     upi_id:            v('co-upi')         || null,
     bank_name:         v('co-bank-name')   || null,
     bank_account_no:   v('co-bank-acc')    || null,
-    bank_ifsc:         v('co-bank-ifsc').toUpperCase() || null,
+    bank_ifsc:         (v('co-bank-ifsc') || '').toUpperCase() || null,
     bank_branch:       v('co-bank-branch') || null,
     terms_conditions:  v('co-terms')       || null,
   };
