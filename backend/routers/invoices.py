@@ -19,7 +19,7 @@ from sqlalchemy import select, func
 from database import get_db
 from models import (
     Invoice, InvoiceItem, Customer, StockItem, StockTransaction,
-    InvoiceStatus, PaymentStatus, StockTxnType,
+    InvoiceStatus, PaymentStatus, StockTxnType, CategoryEnum,
 )
 from utils.auth import get_current_user_payload
 from utils.business import (
@@ -167,8 +167,12 @@ async def _check_stock_availability(
     Pre-check: raise 422 if any item has insufficient stock in stock master.
     Called BEFORE creating the invoice so nothing is committed on failure.
     Uses _find_stock() so NULL-purity stock master rows match any purity request.
+    Polish Charges category is skipped — it is calculation-only, not linked to stock.
     """
     for item in items:
+        # Polish Charges are calculation-only — no stock deduction or check needed
+        if item.category == CategoryEnum.PolishCharges or item.category == "Polish Charges":
+            continue
         stock = await _find_stock(db, tenant_id, item.category, item.purity)
         if not stock:
             raise HTTPException(
@@ -204,6 +208,10 @@ async def _deduct_stock(
     Stock availability must be pre-checked via _check_stock_availability().
     """
     for item in items:
+        # Polish Charges are calculation-only — no stock deduction
+        if item.category == CategoryEnum.PolishCharges or item.category == "Polish Charges":
+            continue
+
         stock = await _find_stock(db, tenant_id, item.category, item.purity)
         if not stock:
             continue  # pre-check already caught this; defensive skip
@@ -345,6 +353,9 @@ async def create_invoice(
     seq        = (count_result.scalar() or 0) + 1
     invoice_no = generate_invoice_no(tenant_id, seq)
 
+    # Pre-check stock availability BEFORE any db.flush (nothing committed on failure)
+    await _check_stock_availability(db, tenant_id, item_rows)
+
     invoice = Invoice(
         tenant_id=tenant_id,
         invoice_no=invoice_no,
@@ -386,9 +397,6 @@ async def create_invoice(
         body.customer_mobile, body.customer_name, body.customer_state,
         body.customer_pan, body.customer_gstin,
     )
-
-    # Pre-check stock availability BEFORE committing anything (Improvement doc fix)
-    await _check_stock_availability(db, tenant_id, item_rows)
 
     # Deduct stock (Issue 9)
     await _deduct_stock(
