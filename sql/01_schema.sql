@@ -147,8 +147,9 @@ CREATE TABLE invoice_items (
     qty             NUMERIC(12,3) NOT NULL,
     unit            VARCHAR(5) NOT NULL CHECK (unit IN ('grm','crt')),
     rate            NUMERIC(15,2) NOT NULL,
+    polish_charges  NUMERIC(15,2) NOT NULL DEFAULT 0,  -- polish qty * rate (calculation only, no stock link)
     making_charges  NUMERIC(15,2) DEFAULT 0,
-    amount          NUMERIC(15,2) NOT NULL,        -- (qty*rate) + making_charges
+    amount          NUMERIC(15,2) NOT NULL,        -- (qty*rate) + (polish_charges*rate) + making_charges
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
