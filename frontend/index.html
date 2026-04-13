@@ -5295,7 +5295,7 @@ function renderInvItems() {
       purityCell = `<td><span style="color:var(--muted);font-size:11px;">N/A</span></td>`;
     } else if (stocks.length > 0) {
       const opts = `<option value="">— select —</option>` + stocks.map(s =>
-        `<option value="${esc(s.purity)}" ${item.purity===s.purity?'selected':''} data-qty="${s.qty_on_hand}">${esc(s.purity)} (${s.qty_on_hand.toFixed(3)} ${s.unit})</option>`
+        `<option value="${esc(s.purity)}" ${item.purity===s.purity?'selected':''} data-qty="${s.qty_on_hand}">${esc(s.purity)} (${s.qty_on_hand.toFixed(3)} ${fmtUnit(s.unit)})</option>`
       ).join('');
       purityCell = `<td><select class="inp" style="width:140px;" onchange="_invItems[${i}].purity=this.value;updateStockHint(${i},this)" id="purity-sel-${i}">${opts}</select><div id="stock-hint-${i}" style="font-size:10px;color:var(--muted);margin-top:2px;"></div></td>`;
     } else {
@@ -5335,7 +5335,7 @@ function updateStockHint(idx, selectEl) {
   if (!hint) return;
   const opt = selectEl.options[selectEl.selectedIndex];
   if (opt && opt.dataset.qty) {
-    hint.textContent = `Available: ${parseFloat(opt.dataset.qty).toFixed(3)} ${_invItems[idx].unit}`;
+    hint.textContent = `Available: ${parseFloat(opt.dataset.qty).toFixed(3)} ${fmtUnit(_invItems[idx].unit)}`;
     hint.style.color = 'var(--grn)';
   } else {
     hint.textContent = '';
@@ -5555,9 +5555,9 @@ function buildPDF(inv, items, co) {
           (it.purity ? '<span style="font-size:10px;color:#888;margin-left:5px;">(' + esc(it.purity) + ')</span>' : '') +
           (it.hsn_code ? '<div style="font-size:9px;color:#aaa;margin-top:1px;">HSN: ' + esc(it.hsn_code) + '</div>' : '') +
         '</td>' +
-        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.qty||0).toFixed(3) + ' ' + esc(it.unit||'') + '</td>' +
-        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.polish_charges||0).toFixed(3) + ' ' + esc(it.unit||'grm') + '</td>' +
-        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + (parseFloat(it.qty||0) + parseFloat(it.polish_charges||0)).toFixed(3) + ' ' + esc(it.unit||'grm') + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.qty||0).toFixed(3) + ' ' + fmtUnit(it.unit) + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + parseFloat(it.polish_charges||0).toFixed(3) + ' ' + fmtUnit(it.unit||'grm') + '</td>' +
+        '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + (parseFloat(it.qty||0) + parseFloat(it.polish_charges||0)).toFixed(3) + ' ' + fmtUnit(it.unit||'grm') + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + rs(it.rate) + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:11px;">' + rs(it.making_charges) + '</td>' +
         '<td style="padding:6px 8px;border-bottom:1px solid #f0ede4;text-align:right;font-size:12px;font-weight:700;">' + rs(it.amount) + '</td>' +
@@ -6194,7 +6194,7 @@ async function loadStock() {
         <td><span class="pill ${s.category==='Gold'?'pg':s.category==='Silver'?'pb':'pm'}">${esc(s.category)}</span></td>
         <td style="font-family:var(--mono);font-size:11px;">${esc(s.purity)}</td>
         <td>${esc(s.description)}</td>
-        <td style="font-size:12px;color:var(--muted);">${esc(s.unit)}</td>
+        <td style="font-size:12px;color:var(--muted);">${fmtUnit(s.unit)}</td>
         <td class="r" style="font-weight:700;font-family:var(--mono);">${parseFloat(s.qty_on_hand).toFixed(3)}</td>
         <td class="r" style="white-space:nowrap;">
           <button class="btn btn-xs btn-blue" onclick="openStockAdj(${s.id},'${esc(s.description)}',${s.qty_on_hand})" title="Adjust Quantity">⚖️ Adjust</button>
@@ -6552,7 +6552,7 @@ function renderReport(type, data) {
           <td><span class="pill ${catPill(m.category)}">${esc(m.category)}</span></td>
           <td style="font-family:var(--mono);font-size:11px;">${esc(m.purity)}</td>
           <td style="font-size:12px;">${esc(m.description)}</td>
-          <td style="font-size:11px;color:var(--muted);">${esc(m.unit)}</td>
+          <td style="font-size:11px;color:var(--muted);">${fmtUnit(m.unit)}</td>
           <td class="r" style="font-weight:600;">${(+m.qty).toFixed(3)}</td>
           <td class="r" style="font-size:11px;color:var(--muted);">${m.rate?inr(m.rate):'—'}</td>
           <td class="r" style="color:var(--grn);font-weight:600;">${m.value_in?inr(m.value_in):'—'}</td>
@@ -6626,7 +6626,7 @@ function renderReport(type, data) {
             <td><span class="pill ${catPill(r.category)}">${esc(r.category)}</span></td>
             <td style="font-family:var(--mono);font-size:11px;">${esc(r.purity||'—')}</td>
             <td>${esc(r.description)}</td>
-            <td style="font-size:11px;color:var(--muted);">${esc(r.unit)}</td>
+            <td style="font-size:11px;color:var(--muted);">${fmtUnit(r.unit)}</td>
             <td class="r" style="color:var(--grn);font-weight:600;">${(+r.qty_in).toFixed(3)}</td>
             <td class="r" style="color:var(--grn);">${inr(r.value_in_total||0)}</td>
             <td class="r" style="color:var(--red);font-weight:600;">${(+r.qty_out).toFixed(3)}</td>
@@ -6709,7 +6709,7 @@ function renderReport(type, data) {
         <td style="font-family:var(--mono);font-size:11px;">${esc(r.purity||'—')}</td>
         <td>${esc(r.description)}</td>
         <td class="r">${parseFloat(r.qty).toFixed(3)}</td>
-        <td style="font-size:11px;">${esc(r.unit)}</td>
+        <td style="font-size:11px;">${fmtUnit(r.unit)}</td>
         <td class="r">${inr(r.rate)}</td>
         <td class="r">${inr(r.making_charges)}</td>
         <td class="r" style="font-weight:700;color:var(--gold2);">${inr(r.amount)}</td>
@@ -7039,6 +7039,7 @@ async function submitSupport() {
 function v(id) { const el = document.getElementById(id); if (!el) return ''; if (el.tagName==='SELECT') return el.value; return (el.value !== undefined ? el.value : el.textContent || '').trim(); }
 function set(id, val) { const el = document.getElementById(id); if(el) { if(el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT') el.value=val; else el.textContent=val; } }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtUnit(u) { return (u === 'crt' || u === 'CRT') ? 'cent' : (u || ''); }
 function loadingRow(cols) { return `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:20px;">Loading…</td></tr>`; }
 function errRow(cols, msg) { return `<tr><td colspan="${cols}" style="color:var(--red);padding:12px;">Error: ${esc(msg)}</td></tr>`; }
 function noDataRow(cols) { return `<tr><td colspan="${cols}" style="text-align:center;color:var(--muted);padding:20px;">No data for the selected period</td></tr>`; }
@@ -8100,7 +8101,7 @@ async function openEditSupplierInvoice(id) {
         <tbody>${items.map(it => `<tr>
           <td>${esc(it.category||'')}</td><td>${esc(it.purity||'—')}</td>
           <td>${esc(it.description||'')}</td>
-          <td class="r">${it.qty} ${esc(it.unit||'')}</td>
+          <td class="r">${it.qty} ${fmtUnit(it.unit)}</td>
           <td class="r">${inr(it.rate||0)}</td><td class="r">${inr(it.making_charges||0)}</td>
           <td class="r" style="font-weight:700;">${inr(it.amount||0)}</td>
         </tr>`).join('')}</tbody>
