@@ -3977,6 +3977,61 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 </div>
 
+<!-- Stock Edit Modal -->
+<div class="modal-bg" id="m-stock-edit">
+  <div class="modal">
+    <div class="mt">✏️ Edit Stock Item</div>
+    <div class="ms" id="sedit-sub">Update item details</div>
+    <div id="sedit-err" class="alert al-r" style="display:none;"></div>
+    <div class="fr2">
+      <div class="fg"><label class="lbl">Category <span class="req">*</span></label>
+        <select class="inp" id="sedit-cat">
+          <option value="Gold">Gold</option>
+          <option value="Silver">Silver</option>
+          <option value="Diamond">Diamond</option>
+          <option value="Polish Charges">Polish Charges</option>
+        </select>
+      </div>
+      <div class="fg"><label class="lbl">Purity</label>
+        <select class="inp" id="sedit-purity">
+          <option value="">— None —</option>
+          <option value="24K">24K</option>
+          <option value="23K">23K</option>
+          <option value="22K">22K</option>
+          <option value="21K">21K</option>
+          <option value="20K">20K</option>
+          <option value="18K">18K</option>
+          <option value="16K">16K</option>
+          <option value="14K">14K</option>
+          <option value="999">999</option>
+          <option value="925">925</option>
+          <option value="916">916</option>
+          <option value="Std">Std</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="lbl">Description <span class="req">*</span></label>
+      <input class="inp" id="sedit-desc" placeholder="e.g. Gold 22K Necklace Lot"/>
+    </div>
+    <div class="fr2">
+      <div class="fg"><label class="lbl">Unit</label>
+        <select class="inp" id="sedit-unit">
+          <option value="grm">grm</option>
+          <option value="crt">crt</option>
+        </select>
+      </div>
+      <div class="fg" style="display:flex;align-items:flex-end;">
+        <div style="font-size:11px;color:var(--muted);padding-bottom:6px;">Qty on hand is not changed here — use Adjust for that.</div>
+      </div>
+    </div>
+    <input type="hidden" id="sedit-stock-id"/>
+    <div class="ma">
+      <button class="btn btn-g" onclick="submitStockEdit()">✓ Save Changes</button>
+      <button class="btn btn-gh" onclick="closeModal('m-stock-edit')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Cash Entry Modal -->
 <div class="modal-bg" id="m-cash">
   <div class="modal">
@@ -6141,8 +6196,10 @@ async function loadStock() {
         <td>${esc(s.description)}</td>
         <td style="font-size:12px;color:var(--muted);">${esc(s.unit)}</td>
         <td class="r" style="font-weight:700;font-family:var(--mono);">${parseFloat(s.qty_on_hand).toFixed(3)}</td>
-        <td class="r">
-          <button class="btn btn-xs btn-blue" onclick="openStockAdj(${s.id},'${esc(s.description)}',${s.qty_on_hand})">⚖️ Adjust</button>
+        <td class="r" style="white-space:nowrap;">
+          <button class="btn btn-xs btn-blue" onclick="openStockAdj(${s.id},'${esc(s.description)}',${s.qty_on_hand})" title="Adjust Quantity">⚖️ Adjust</button>
+          <button class="btn btn-xs btn-g" onclick="openStockEdit(${s.id},'${esc(s.description)}','${esc(s.category)}','${esc(s.purity==='—'?'':s.purity)}','${esc(s.unit)}')" title="Edit Item">✏️ Edit</button>
+          <button class="btn btn-xs btn-red" onclick="deleteStockItem(${s.id},'${esc(s.description)}')" title="Delete Item">🗑️ Delete</button>
         </td>
       </tr>`).join('')
       : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No stock items. Add your first item.</td></tr>';
@@ -6190,6 +6247,46 @@ async function submitStockAdj() {
     closeModal('m-stock-adj');
     loadStock();
   } catch(e) { err.style.display='block'; err.textContent=e.message; }
+}
+
+function openStockEdit(id, desc, category, purity, unit) {
+  set('sedit-stock-id', id);
+  set('sedit-desc', desc);
+  set('sedit-cat', category);
+  set('sedit-purity', purity || '');
+  set('sedit-unit', unit);
+  document.getElementById('sedit-sub').textContent = 'Editing: ' + desc;
+  document.getElementById('sedit-err').style.display = 'none';
+  openModal('m-stock-edit');
+}
+
+async function submitStockEdit() {
+  const err = document.getElementById('sedit-err');
+  err.style.display = 'none';
+  const id   = v('sedit-stock-id');
+  const desc = v('sedit-desc').trim();
+  if (!desc) { err.style.display='block'; err.textContent='Description is required'; return; }
+  const body = {
+    description: desc,
+    category:    v('sedit-cat'),
+    purity:      v('sedit-purity') || null,
+    unit:        v('sedit-unit'),
+  };
+  try {
+    await PUT('/api/stock/' + id, body);
+    toast('Stock item updated ✓', 'success');
+    closeModal('m-stock-edit');
+    loadStock();
+  } catch(e) { err.style.display='block'; err.textContent = e.message || 'Update failed'; }
+}
+
+async function deleteStockItem(id, desc) {
+  if (!confirm('Delete stock item "' + desc + '"?\nThis will hide it from inventory. Existing transactions are preserved.')) return;
+  try {
+    await DELETE('/api/stock/' + id);
+    toast('Stock item deleted ✓', 'success');
+    loadStock();
+  } catch(e) { toast(e.message || 'Could not delete item', 'error'); }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -7857,7 +7954,7 @@ function addSupplierInvoiceItem() {
       <option value="20K">20K</option><option value="18K">18K</option>
       <option value="16K">16K</option><option value="14K">14K</option>
       <option value="999">999</option><option value="925">925</option>
-      <option value="916">916</option>
+      <option value="916">916</option><option value="Std">Std</option>
     </select></td>
     <td><input class="inp" style="font-size:11px;" placeholder="Description"/></td>
     <td><input class="inp" style="width:55px;font-size:11px;" value="7113"/></td>
