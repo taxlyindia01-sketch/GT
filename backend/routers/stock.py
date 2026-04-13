@@ -27,6 +27,13 @@ class StockAdjust(BaseModel):
     reason:        Optional[str] = None
     txn_date:      date = date.today()
 
+class StockUpdate(BaseModel):
+    """Fields that can be edited on an existing stock item."""
+    description: Optional[str] = None
+    category:    Optional[str] = None
+    purity:      Optional[str] = None
+    unit:        Optional[str] = None
+
 @router.post("/", status_code=201)
 async def add_stock_item(
     body:    StockCreate,
@@ -87,6 +94,72 @@ async def adjust_stock(
     ))
     await db.commit()
     return {"message": "Stock adjusted", "qty_on_hand": float(stock.qty_on_hand)}
+
+@router.put("/{stock_id}")
+async def update_stock_item(
+    stock_id: int,
+    body:     StockUpdate,
+    payload:  dict         = Depends(get_current_user_payload),
+    db:       AsyncSession = Depends(get_db),
+):
+    """
+    Edit stock item details (description, category, purity, unit).
+    Does NOT change qty_on_hand — use /adjust for that.
+    """
+    stock = await db.get(StockItem, stock_id)
+    if not stock or stock.tenant_id != payload["tenant_id"]:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+    if not stock.is_active:
+        raise HTTPException(status_code=400, detail="Stock item has been deleted")
+
+    if body.description is not None:
+        if not body.description.strip():
+            raise HTTPException(status_code=422, detail="Description cannot be empty")
+        stock.description = body.description.strip()
+    if body.category is not None:
+        stock.category    = body.category
+        stock.fifo_enabled = body.category != "Polish Charges"
+    if body.purity is not None:
+        stock.purity      = body.purity or None   # empty string → NULL
+    if body.unit is not None:
+        stock.unit        = body.unit
+
+    await db.commit()
+    return {
+        "message":     "Stock item updated",
+        "stock_id":    stock.id,
+        "description": stock.description,
+        "category":    stock.category.value,
+        "purity":      stock.purity,
+        "unit":        stock.unit.value,
+    }
+
+@router.delete("/{stock_id}")
+async def delete_stock_item(
+    stock_id: int,
+    payload:  dict         = Depends(get_current_user_payload),
+    db:       AsyncSession = Depends(get_db),
+):
+    """
+    Soft-delete a stock item (sets is_active=False).
+    The item is hidden from inventory but all historical transactions are preserved.
+    Cannot delete if qty_on_hand > 0 (must zero out via adjustment first).
+    """
+    stock = await db.get(StockItem, stock_id)
+    if not stock or stock.tenant_id != payload["tenant_id"]:
+        raise HTTPException(status_code=404, detail="Stock item not found")
+    if not stock.is_active:
+        raise HTTPException(status_code=400, detail="Stock item is already deleted")
+    if stock.qty_on_hand > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: item still has {float(stock.qty_on_hand):.3f} units on hand. "
+                   "Adjust qty to zero first."
+        )
+
+    stock.is_active = False
+    await db.commit()
+    return {"message": "Stock item deleted", "stock_id": stock_id}
 
 @router.get("/")
 async def list_stock(

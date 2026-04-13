@@ -517,13 +517,66 @@ async def cancel_supplier_invoice(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
+    """
+    Cancel a purchase invoice and REVERSE the stock update.
+    For each line item:
+      - Deducts the same qty that was added when the invoice was created
+      - Creates a StockTransaction with the ORIGINAL purchase_rate from the invoice item
+      - Clamps qty_on_hand at zero (handles partial FIFO sales already made)
+    """
     tid = payload["tenant_id"]
+    uid = payload.get("user_id")
+
     inv = await db.get(SupplierInvoice, invoice_id)
     if not inv or inv.tenant_id != tid:
         raise HTTPException(404, "Invoice not found")
+    if inv.status == "cancelled":
+        raise HTTPException(400, "Invoice is already cancelled")
+
+    # Load all line items for this invoice
+    items_r = await db.execute(
+        select(SupplierInvoiceItem).where(SupplierInvoiceItem.invoice_id == invoice_id)
+    )
+    items = items_r.scalars().all()
+
+    for item in items:
+        # Polish Charges are calculation-only — not tracked in stock
+        if item.category and item.category.value == "Polish Charges":
+            continue
+
+        # Find the matching stock item (same tenant, category, purity, unit)
+        stock_r = await db.execute(
+            select(StockItem).where(
+                StockItem.tenant_id == tid,
+                StockItem.category  == item.category,
+                StockItem.purity    == item.purity,
+                StockItem.unit      == item.unit,
+            ).limit(1)
+        )
+        stock = stock_r.scalar_one_or_none()
+
+        if stock:
+            # Reverse: subtract the qty that was added on purchase
+            # Clamp at zero — some stock may have already been sold via FIFO
+            stock.qty_on_hand = max(Decimal("0"), stock.qty_on_hand - item.qty)
+
+            # Record the reversal transaction using the ORIGINAL invoice purchase rate
+            db.add(StockTransaction(
+                tenant_id     = tid,
+                stock_item_id = stock.id,
+                txn_type      = StockTxnType.adjustment,
+                qty           = -item.qty,          # negative = stock going out
+                purchase_rate = item.rate,           # original rate preserved for audit
+                invoice_id    = None,
+                reason        = f"Cancellation of Purchase Invoice {inv.invoice_no}",
+                txn_date      = inv.invoice_date,
+                lot_remaining = None,
+                created_by    = uid,
+            ))
+
     inv.status = "cancelled"
     await db.commit()
-    return {"message": "Invoice cancelled"}
+    return {"message": "Invoice cancelled and stock reversed", "invoice_no": inv.invoice_no}
 
 # ── Supplier Payments ─────────────────────────────────────────
 
