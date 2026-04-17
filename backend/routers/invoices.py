@@ -384,8 +384,7 @@ async def create_invoice(
         tcs_applicable=False,
         tcs_base=Decimal("0"),
         tcs_amount=Decimal("0"),
-        round_off=round_off,
-        grand_total=grand_total,
+        grand_total=grand_total,   # grand_total already includes round_off
         outstanding=grand_total,
         status=InvoiceStatus.active,
         payment_status=PaymentStatus.unpaid,
@@ -671,8 +670,9 @@ async def edit_invoice(
     # round_off header-only update (when items not changed — still recalc grand_total)
     if body.round_off is not None and body.items is None:
         new_round = Decimal(str(body.round_off)).quantize(Decimal("0.01"))
-        invoice.round_off   = new_round
-        invoice.grand_total = invoice.subtotal + invoice.cgst + invoice.sgst + invoice.igst + new_round
+        # grand_total stores subtotal + gst + round_off; round_off is derived from it
+        base_total = invoice.subtotal + invoice.cgst + invoice.sgst + invoice.igst + invoice.tcs_amount
+        invoice.grand_total = base_total + new_round
         invoice.outstanding = max(Decimal("0"), invoice.grand_total - invoice.amount_paid)
         if invoice.outstanding <= 0:
             invoice.payment_status = PaymentStatus.paid
@@ -767,8 +767,7 @@ async def edit_invoice(
         invoice.sgst        = gst["sgst"]
         invoice.igst        = gst["igst"]
         invoice.gst_rate    = new_gst_rate
-        invoice.round_off   = new_round
-        invoice.grand_total = new_grand
+        invoice.grand_total = new_grand   # new_grand already includes round_off
         invoice.outstanding = max(Decimal("0"), new_grand - amount_already_paid)
         if invoice.outstanding <= 0:
             invoice.payment_status = PaymentStatus.paid
