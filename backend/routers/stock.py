@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -25,7 +25,7 @@ class StockAdjust(BaseModel):
     qty_change:    Decimal   # positive = in, negative = out
     purchase_rate: Optional[Decimal] = None
     reason:        Optional[str] = None
-    txn_date:      date = date.today()
+    txn_date:      date = Field(default_factory=date.today)  # evaluated per-request
 
 class StockUpdate(BaseModel):
     """Fields that can be edited on an existing stock item."""
@@ -77,11 +77,22 @@ async def adjust_stock(
     if not stock or stock.tenant_id != payload["tenant_id"]:
         raise HTTPException(status_code=404, detail="Stock item not found")
 
-    stock.qty_on_hand += body.qty_change
-    if float(stock.qty_on_hand) < 0:
+    # Validate BEFORE mutating — avoids dirty session state if we raise
+    new_qty = stock.qty_on_hand + body.qty_change
+    if float(new_qty) < 0:
         raise HTTPException(status_code=400, detail="Insufficient stock quantity")
 
-    txn_type = StockTxnType.purchase if body.qty_change > 0 else StockTxnType.adjustment
+    stock.qty_on_hand = new_qty
+
+    is_purchase = body.qty_change > 0
+    txn_type = StockTxnType.purchase if is_purchase else StockTxnType.adjustment
+
+    # For purchases (positive qty_change), set a reason that _parse_reason can
+    # identify as a purchase IN so it appears correctly in Stock Ledger & FIFO report.
+    reason = body.reason
+    if is_purchase and not reason:
+        reason = f"Purchase — Stock IN {body.txn_date}"
+
     db.add(StockTransaction(
         tenant_id=payload["tenant_id"],
         stock_item_id=stock_id,
@@ -89,8 +100,8 @@ async def adjust_stock(
         qty=body.qty_change,
         purchase_rate=body.purchase_rate,
         txn_date=body.txn_date,
-        reason=body.reason,
-        lot_remaining=body.qty_change if body.qty_change > 0 else None,
+        reason=reason,
+        lot_remaining=body.qty_change if is_purchase else None,
     ))
     await db.commit()
     return {"message": "Stock adjusted", "qty_on_hand": float(stock.qty_on_hand)}

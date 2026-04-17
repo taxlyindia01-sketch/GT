@@ -53,6 +53,7 @@ class InvoiceCreate(BaseModel):
     pay_mode:        str
     gst_type:        str = "CGST+SGST"
     gst_rate:        Decimal = Decimal("3")
+    round_off:       Decimal = Decimal("0")
     items:           list[InvoiceItemIn]
     notes:           Optional[str] = None
 
@@ -79,6 +80,7 @@ class InvoiceOut(BaseModel):
     igst:            Decimal
     tcs_applicable:  bool
     tcs_amount:      Decimal
+    round_off:       Optional[Decimal] = Decimal("0")
     grand_total:     Decimal
     outstanding:     Decimal
     payment_status:  str
@@ -168,17 +170,21 @@ async def _check_stock_availability(
     Called BEFORE creating the invoice so nothing is committed on failure.
     Uses _find_stock() so NULL-purity stock master rows match any purity request.
     Polish Charges category is skipped — it is calculation-only, not linked to stock.
+    NOTE: items may be InvoiceItem ORM objects whose category/unit are still plain
+    strings (not yet coerced to Enum by SQLAlchemy). Use getattr(.value) safely.
     """
     for item in items:
+        cat_val  = getattr(item.category, 'value', str(item.category))
+        unit_val = getattr(item.unit,     'value', str(item.unit))
         # Polish Charges are calculation-only — no stock deduction or check needed
-        if item.category == CategoryEnum.PolishCharges or item.category == "Polish Charges":
+        if cat_val == "Polish Charges":
             continue
         stock = await _find_stock(db, tenant_id, item.category, item.purity)
         if not stock:
             raise HTTPException(
                 status_code=422,
                 detail=(
-                    f"No stock item found for {item.category.value}"
+                    f"No stock item found for {cat_val}"
                     f"{' / ' + item.purity if item.purity else ''}. "
                     "Please add the item to Stock Master first."
                 ),
@@ -187,10 +193,10 @@ async def _check_stock_availability(
             raise HTTPException(
                 status_code=422,
                 detail=(
-                    f"Insufficient stock for {item.category.value}"
+                    f"Insufficient stock for {cat_val}"
                     f"{' / ' + item.purity if item.purity else ''}: "
-                    f"available {float(stock.qty_on_hand):.3f} {item.unit.value}, "
-                    f"requested {float(item.qty):.3f} {item.unit.value}."
+                    f"available {float(stock.qty_on_hand):.3f} {unit_val}, "
+                    f"requested {float(item.qty):.3f} {unit_val}."
                 ),
             )
 
@@ -209,7 +215,8 @@ async def _deduct_stock(
     """
     for item in items:
         # Polish Charges are calculation-only — no stock deduction
-        if item.category == CategoryEnum.PolishCharges or item.category == "Polish Charges":
+        cat_val = getattr(item.category, 'value', str(item.category))
+        if cat_val == "Polish Charges":
             continue
 
         stock = await _find_stock(db, tenant_id, item.category, item.purity)
@@ -314,7 +321,9 @@ async def create_invoice(
     # GST
     gst = calculate_gst(subtotal, body.gst_rate, body.gst_type)
 
-    grand_total = subtotal + gst["total_gst"]
+    # grand_total = subtotal + GST + round_off (round_off can be +ve or -ve)
+    round_off   = body.round_off.quantize(Decimal("0.01"))
+    grand_total = subtotal + gst["total_gst"] + round_off
 
     # 269ST flag — cash receipt >= ₹2,00,000 is a violation (shown in response)
     SEC_269ST_THRESHOLD = Decimal("200000")
@@ -375,6 +384,7 @@ async def create_invoice(
         tcs_applicable=False,
         tcs_base=Decimal("0"),
         tcs_amount=Decimal("0"),
+        round_off=round_off,
         grand_total=grand_total,
         outstanding=grand_total,
         status=InvoiceStatus.active,
@@ -421,6 +431,7 @@ async def create_invoice(
         "igst":             float(invoice.igst),
         "tcs_applicable":   False,
         "tcs_amount":       0.0,
+        "round_off":        float(invoice.round_off or 0),
         "sec_269st_violation": sec_269st_violation,
         "grand_total":      float(invoice.grand_total),
         "outstanding":      float(invoice.outstanding),
@@ -617,6 +628,7 @@ class InvoiceEditBody(BaseModel):
     pay_mode:        Optional[str]     = None
     gst_type:        Optional[str]     = None
     gst_rate:        Optional[float]   = None
+    round_off:       Optional[float]   = None
     notes:           Optional[str]     = None
     items:           Optional[list[InvoiceItemIn]]  = None
 
@@ -656,6 +668,18 @@ async def edit_invoice(
     if body.gst_type        is not None: invoice.gst_type        = body.gst_type
     if body.gst_rate        is not None: invoice.gst_rate        = Decimal(str(body.gst_rate))
     if body.notes           is not None: invoice.notes           = body.notes
+    # round_off header-only update (when items not changed — still recalc grand_total)
+    if body.round_off is not None and body.items is None:
+        new_round = Decimal(str(body.round_off)).quantize(Decimal("0.01"))
+        invoice.round_off   = new_round
+        invoice.grand_total = invoice.subtotal + invoice.cgst + invoice.sgst + invoice.igst + new_round
+        invoice.outstanding = max(Decimal("0"), invoice.grand_total - invoice.amount_paid)
+        if invoice.outstanding <= 0:
+            invoice.payment_status = PaymentStatus.paid
+        elif invoice.amount_paid > 0:
+            invoice.payment_status = PaymentStatus.partial
+        else:
+            invoice.payment_status = PaymentStatus.unpaid
 
     # ── Replace items if provided ─────────────────────────────
     if body.items is not None:
@@ -726,7 +750,8 @@ async def edit_invoice(
             ))
 
         gst          = calculate_gst(subtotal, new_gst_rate, new_gst_type)
-        new_grand    = subtotal + gst["total_gst"]
+        new_round    = Decimal(str(body.round_off)) if body.round_off is not None else (invoice.round_off or Decimal("0"))
+        new_grand    = subtotal + gst["total_gst"] + new_round
 
         # PAN check
         if new_grand > PAN_THRESHOLD and not (body.customer_pan or invoice.customer_pan):
@@ -742,6 +767,7 @@ async def edit_invoice(
         invoice.sgst        = gst["sgst"]
         invoice.igst        = gst["igst"]
         invoice.gst_rate    = new_gst_rate
+        invoice.round_off   = new_round
         invoice.grand_total = new_grand
         invoice.outstanding = max(Decimal("0"), new_grand - amount_already_paid)
         if invoice.outstanding <= 0:
