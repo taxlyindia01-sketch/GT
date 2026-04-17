@@ -53,7 +53,6 @@ class InvoiceCreate(BaseModel):
     pay_mode:        str
     gst_type:        str = "CGST+SGST"
     gst_rate:        Decimal = Decimal("3")
-    round_off:       Decimal = Decimal("0")
     items:           list[InvoiceItemIn]
     notes:           Optional[str] = None
 
@@ -80,7 +79,6 @@ class InvoiceOut(BaseModel):
     igst:            Decimal
     tcs_applicable:  bool
     tcs_amount:      Decimal
-    round_off:       Decimal
     grand_total:     Decimal
     outstanding:     Decimal
     payment_status:  str
@@ -316,9 +314,7 @@ async def create_invoice(
     # GST
     gst = calculate_gst(subtotal, body.gst_rate, body.gst_type)
 
-    # grand_total = subtotal + GST + round_off (round_off can be +ve or -ve)
-    round_off   = body.round_off.quantize(Decimal("0.01"))
-    grand_total = subtotal + gst["total_gst"] + round_off
+    grand_total = subtotal + gst["total_gst"]
 
     # 269ST flag — cash receipt >= ₹2,00,000 is a violation (shown in response)
     SEC_269ST_THRESHOLD = Decimal("200000")
@@ -379,7 +375,6 @@ async def create_invoice(
         tcs_applicable=False,
         tcs_base=Decimal("0"),
         tcs_amount=Decimal("0"),
-        round_off=round_off,
         grand_total=grand_total,
         outstanding=grand_total,
         status=InvoiceStatus.active,
@@ -426,7 +421,6 @@ async def create_invoice(
         "igst":             float(invoice.igst),
         "tcs_applicable":   False,
         "tcs_amount":       0.0,
-        "round_off":        float(invoice.round_off),
         "sec_269st_violation": sec_269st_violation,
         "grand_total":      float(invoice.grand_total),
         "outstanding":      float(invoice.outstanding),
@@ -623,7 +617,6 @@ class InvoiceEditBody(BaseModel):
     pay_mode:        Optional[str]     = None
     gst_type:        Optional[str]     = None
     gst_rate:        Optional[float]   = None
-    round_off:       Optional[float]   = None
     notes:           Optional[str]     = None
     items:           Optional[list[InvoiceItemIn]]  = None
 
@@ -733,8 +726,7 @@ async def edit_invoice(
             ))
 
         gst          = calculate_gst(subtotal, new_gst_rate, new_gst_type)
-        new_round    = Decimal(str(body.round_off)) if body.round_off is not None else (invoice.round_off or Decimal("0"))
-        new_grand    = subtotal + gst["total_gst"] + new_round
+        new_grand    = subtotal + gst["total_gst"]
 
         # PAN check
         if new_grand > PAN_THRESHOLD and not (body.customer_pan or invoice.customer_pan):
@@ -750,7 +742,6 @@ async def edit_invoice(
         invoice.sgst        = gst["sgst"]
         invoice.igst        = gst["igst"]
         invoice.gst_rate    = new_gst_rate
-        invoice.round_off   = new_round
         invoice.grand_total = new_grand
         invoice.outstanding = max(Decimal("0"), new_grand - amount_already_paid)
         if invoice.outstanding <= 0:

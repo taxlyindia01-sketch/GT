@@ -81,15 +81,7 @@ async def adjust_stock(
     if float(stock.qty_on_hand) < 0:
         raise HTTPException(status_code=400, detail="Insufficient stock quantity")
 
-    is_purchase = body.qty_change > 0
-    txn_type = StockTxnType.purchase if is_purchase else StockTxnType.adjustment
-
-    # For purchases (positive qty_change), set a reason that _parse_reason can
-    # identify as a purchase IN so it appears correctly in Stock Ledger & FIFO report.
-    reason = body.reason
-    if is_purchase and not reason:
-        reason = f"Purchase — Stock IN {body.txn_date}"
-
+    txn_type = StockTxnType.purchase if body.qty_change > 0 else StockTxnType.adjustment
     db.add(StockTransaction(
         tenant_id=payload["tenant_id"],
         stock_item_id=stock_id,
@@ -97,8 +89,8 @@ async def adjust_stock(
         qty=body.qty_change,
         purchase_rate=body.purchase_rate,
         txn_date=body.txn_date,
-        reason=reason,
-        lot_remaining=body.qty_change if is_purchase else None,
+        reason=body.reason,
+        lot_remaining=body.qty_change if body.qty_change > 0 else None,
     ))
     await db.commit()
     return {"message": "Stock adjusted", "qty_on_hand": float(stock.qty_on_hand)}

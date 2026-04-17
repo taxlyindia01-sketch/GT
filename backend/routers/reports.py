@@ -435,7 +435,6 @@ def _parse_reason(reason: str) -> tuple:
       ('sale_id', 5)                   — sale linked to Invoice by id
       ('cancelled_id', 5)              — cancellation, original Invoice id
       ('cancelled_invno', 'INV-007')   — cancellation, original Invoice invoice_no
-      ('purchase_adj', None)           — manual purchase/stock-in adjustment (no invoice)
       ('none', None)                   — opening / plain adjustment
     """
     if not reason:
@@ -456,10 +455,6 @@ def _parse_reason(reason: str) -> tuple:
         if val.isdigit():
             return ('cancelled_id', int(val))
         return ('cancelled_invno', val)
-    # Manual purchase stock-in (from adjust_stock with positive qty)
-    m = re.match(r'Purchase\s*[\u2014\-]+\s*Stock IN', r, re.IGNORECASE)
-    if m:
-        return ('purchase_adj', None)
     return ('none', None)
 
 
@@ -478,8 +473,8 @@ def _dedup_txns(all_txns: list) -> list:
             key = ('inv', t.invoice_id, direction)
         else:
             kind, lookup_key = _parse_reason(t.reason or '')
-            if kind in ('none', 'purchase_adj') or lookup_key is None:
-                # Opening/adjustment/manual purchase — keep ALL (each is a separate lot)
+            if kind == 'none' or lookup_key is None:
+                # Opening/adjustment with no invoice ref — keep ALL (unique entries)
                 # Use txn id to make key unique so nothing is dropped
                 key = ('unique', t.id, direction)
             else:
@@ -628,7 +623,7 @@ async def fifo_report(
                 txn_label = "Cancelled Sale"   # override label for clarity
 
             else:
-                # Opening stock, manual purchase adjustment, or plain adjustment
+                # Opening stock or plain adjustment: no invoice reference
                 inv_no = txn_label if not reason else reason
                 party  = stock.description
 
