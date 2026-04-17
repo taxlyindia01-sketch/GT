@@ -213,7 +213,6 @@ class Invoice(Base):
     tcs_applicable:   Mapped[bool]          = mapped_column(Boolean, default=False)
     tcs_base:         Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     tcs_amount:       Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)     # 1% of tcs_base
-    round_off:        Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True, default=0, server_default="0")
     grand_total:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     amount_paid:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     outstanding:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
@@ -231,6 +230,18 @@ class Invoice(Base):
                                           overlaps="invoices,tenant")
     items:    Mapped[list[InvoiceItem]] = relationship(back_populates="invoice", cascade="all, delete-orphan")
     payments: Mapped[list[Payment]]   = relationship(back_populates="invoice")
+
+    @property
+    def round_off(self) -> Decimal:
+        """
+        Computed round-off: grand_total minus all known components.
+        Works for both old invoices (returns 0) and new ones (returns actual round-off).
+        Requires NO extra DB column — derived purely from existing stored values.
+        """
+        total_gst = (self.cgst or Decimal("0")) + (self.sgst or Decimal("0")) + (self.igst or Decimal("0"))
+        tcs       = self.tcs_amount or Decimal("0")
+        base      = (self.subtotal or Decimal("0")) + total_gst + tcs
+        return (self.grand_total or Decimal("0")) - base
 
 
 # ── Invoice Item ──────────────────────────────────────────────
