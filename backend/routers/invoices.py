@@ -73,6 +73,8 @@ class InvoiceOut(BaseModel):
     customer_mobile: str
     customer_name:   str
     customer_pan:    Optional[str]
+    customer_state:  Optional[str]
+    customer_gstin:  Optional[str]
     pay_mode:        str
     subtotal:        Decimal
     cgst:            Decimal
