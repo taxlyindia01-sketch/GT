@@ -112,7 +112,6 @@ CREATE TABLE invoices (
     tcs_applicable  BOOLEAN DEFAULT FALSE,
     tcs_base        NUMERIC(15,2) DEFAULT 0,
     tcs_amount      NUMERIC(15,2) DEFAULT 0,       -- 1% of tcs_base
-    round_off       NUMERIC(10,2) DEFAULT 0,       -- rounding adjustment (can be +ve or -ve)
     grand_total     NUMERIC(15,2) DEFAULT 0,
     amount_paid     NUMERIC(15,2) DEFAULT 0,
     outstanding     NUMERIC(15,2) DEFAULT 0,
