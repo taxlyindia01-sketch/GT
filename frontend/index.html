@@ -3660,10 +3660,6 @@ document.addEventListener('DOMContentLoaded', function() {
       <div class="inv-tot-row"><span>Subtotal</span><span id="it-sub">₹0.00</span></div>
       <div class="inv-tot-row"><span id="it-gst-lbl">CGST + SGST (3%)</span><span id="it-gst">₹0.00</span></div>
       <div class="inv-tot-row" id="it-269st-row" style="display:none;color:var(--red);font-size:12px;"><span>⚠ Clause 186 — Cash ≥ ₹2L</span><span style="font-size:11px;">Violation</span></div>
-      <div class="inv-tot-row" style="align-items:center;">
-        <span>Round Off</span>
-        <input class="inp" type="number" id="it-round-off" step="0.01" placeholder="0.00" style="width:90px;text-align:right;padding:4px 8px;font-size:13px;" oninput="calcInvTotals()"/>
-      </div>
       <div class="inv-tot-row grand"><span>Grand Total</span><span id="it-grand">₹0.00</span></div>
     </div>
     <div class="fg" style="margin-top:12px;"><label class="lbl">Notes</label><textarea class="inp" id="if-notes" placeholder="Optional notes…"></textarea></div>
@@ -3741,10 +3737,6 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="inv-totals">
       <div class="inv-tot-row"><span>Subtotal</span><span id="ei-sub">₹0.00</span></div>
       <div class="inv-tot-row"><span id="ei-gst-lbl">CGST + SGST (3%)</span><span id="ei-gst">₹0.00</span></div>
-      <div class="inv-tot-row" style="align-items:center;">
-        <span>Round Off</span>
-        <input class="inp" type="number" id="ei-round-off" step="0.01" placeholder="0.00" style="width:90px;text-align:right;padding:4px 8px;font-size:13px;" oninput="calcEditInvTotals()"/>
-      </div>
       <div class="inv-tot-row grand"><span>Grand Total</span><span id="ei-grand">₹0.00</span></div>
     </div>
     <div class="fg" style="margin-top:10px;"><label class="lbl">Notes</label><textarea class="inp" id="ei-notes" placeholder="Optional notes…"></textarea></div>
@@ -5167,7 +5159,6 @@ async function openNewInvoice() {
   set('if-date', today());
   ['if-mob','if-name','if-pan','if-gstin','if-notes'].forEach(id => set(id,''));
   set('if-mode','Cash'); set('if-gst-type','CGST+SGST'); set('if-gst-rate','3');
-  const roEl = document.getElementById('it-round-off'); if (roEl) roEl.value = '';
   _invItems = [];
   document.getElementById('inv-pan-warn').style.display = 'none';
   document.getElementById('inv-cash-pan-warn').style.display = 'none';
@@ -5382,8 +5373,7 @@ function calcInvTotals() {
   const gstType = v('if-gst-type') || 'CGST+SGST';
   const payMode = v('if-mode') || 'Cash';
   const totalGst = gstType === 'Exempt' ? 0 : subtotal * gstRate / 100;
-  const roundOff = parseFloat(document.getElementById('it-round-off')?.value) || 0;
-  const grandTotal = subtotal + totalGst + roundOff;
+  const grandTotal = subtotal + totalGst;
   const sec269stViolation = payMode === 'Cash' && grandTotal >= 200000;
   set('it-sub', inr(subtotal));
   set('it-gst-lbl', gstType === 'IGST' ? `IGST (${gstRate}%)` : gstType === 'Exempt' ? 'GST (Exempt)' : `CGST + SGST (${gstRate}%)`);
@@ -5469,7 +5459,6 @@ async function submitInvoice() {
     customer_state: state, customer_pan: v('if-pan').toUpperCase() || null,
     customer_gstin: v('if-gstin') || null, pay_mode: mode,
     gst_type: v('if-gst-type'), gst_rate: parseFloat(v('if-gst-rate'))||3,
-    round_off: parseFloat(document.getElementById('it-round-off')?.value) || 0,
     items, notes: v('if-notes') || null
   };
   setBtnLoading(btn, true);
@@ -5644,7 +5633,6 @@ function buildPDF(inv, items, co) {
       '<table class="inv-totals">' +
         '<tr><td>Subtotal</td><td>' + rs(inv.subtotal) + '</td></tr>' +
         buildGSTRows(inv, rs) +
-        (parseFloat(inv.round_off||0) !== 0 ? '<tr><td>Round Off</td><td>' + rs(inv.round_off) + '</td></tr>' : '') +
         '<tr class="inv-grand"><td>Grand Total</td><td>' + rs(inv.grand_total) + '</td></tr>' +
         '<tr class="inv-paid"><td>Amount Paid</td><td>' + rs(inv.amount_paid) + '</td></tr>' +
         '<tr class="' + (+inv.outstanding>0?'inv-due':'inv-settled') + '"><td>' + (+inv.outstanding>0?'Balance Due':'Settled') + '</td><td>' + rs(inv.outstanding) + '</td></tr>' +
@@ -7283,8 +7271,6 @@ function openEditInvoiceFull() {
   if (gstTypeEl && inv.gst_type) gstTypeEl.value = (inv.gst_type||'CGST+SGST').replace('GSTTypeEnum.','').replace('GSTType.','');
   const gstRateEl = document.getElementById('ei-gst-rate');
   if (gstRateEl && inv.gst_rate) gstRateEl.value = String(parseFloat(inv.gst_rate));
-  const roEditEl = document.getElementById('ei-round-off');
-  if (roEditEl) roEditEl.value = parseFloat(inv.round_off||0) !== 0 ? parseFloat(inv.round_off||0).toFixed(2) : '';
   document.getElementById('edit-inv-err').style.display = 'none';
   // Load items — calcEditInvTotals runs inside addEditItem, no need to call here
   loadEditItems(id);
@@ -7367,8 +7353,7 @@ function calcEditInvTotals() {
   const gstRate = parseFloat(v('ei-gst-rate')) || 3;
   const gstType = v('ei-gst-type') || 'CGST+SGST';
   const totalGst = gstType === 'Exempt' ? 0 : subtotal * gstRate / 100;
-  const roundOff = parseFloat(document.getElementById('ei-round-off')?.value) || 0;
-  const grand = subtotal + totalGst + roundOff;
+  const grand = subtotal + totalGst;
   set('ei-sub', inr(subtotal));
   set('ei-gst-lbl', gstType === 'IGST' ? `IGST (${gstRate}%)` : gstType === 'Exempt' ? 'GST (Exempt)' : `CGST + SGST (${gstRate}%)`);
   set('ei-gst', inr(totalGst));
@@ -7412,7 +7397,6 @@ async function submitEditInvoice() {
     pay_mode:        v('ei-mode')    || null,
     gst_type:        v('ei-gst-type')|| null,
     gst_rate:        parseFloat(v('ei-gst-rate')) || 3,
-    round_off:       parseFloat(document.getElementById('ei-round-off')?.value) || 0,
     notes:           v('ei-notes')   || null,
     items,
   };
