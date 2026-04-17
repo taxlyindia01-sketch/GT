@@ -212,7 +212,6 @@ class Invoice(Base):
     tcs_applicable:   Mapped[bool]          = mapped_column(Boolean, default=False)
     tcs_base:         Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     tcs_amount:       Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)     # 1% of tcs_base
-    round_off:        Mapped[Decimal]       = mapped_column(Numeric(10, 2), default=0, server_default="0")
     grand_total:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     amount_paid:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
     outstanding:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
