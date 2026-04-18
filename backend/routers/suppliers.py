@@ -473,13 +473,16 @@ async def get_supplier_invoice_items(
 
 
 
-# ── Edit Supplier Invoice (header fields only) ──────────────
+# ── Full Edit Supplier Invoice (all fields including items) ──────────────
 class SupplierInvoiceUpdate(BaseModel):
-    invoice_no:   Optional[str]   = None
-    invoice_date: Optional[date]  = None
-    gst_rate:     Optional[float] = None
-    gst_type:     Optional[str]   = None
-    notes:        Optional[str]   = None
+    """Full edit — header fields + optional complete item replacement."""
+    invoice_no:      Optional[str]                         = None
+    invoice_date:    Optional[date]                        = None
+    gst_rate:        Optional[float]                       = None
+    gst_type:        Optional[str]                         = None
+    notes:           Optional[str]                         = None
+    items:           Optional[List[SupplierInvoiceItemIn]] = None  # if provided, replaces ALL items
+
 
 @router.put("/invoices/{invoice_id}")
 async def update_supplier_invoice(
@@ -488,28 +491,160 @@ async def update_supplier_invoice(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
+    """
+    Full edit of a purchase invoice — all fields including qty, rate, items.
+    - Header fields updated directly.
+    - If items provided: old stock lots reversed at original purchase_rate,
+      old items deleted, new items and stock lots created at new rates.
+    - Totals fully recalculated.
+    """
     tid = payload["tenant_id"]
+    uid = payload.get("user_id")
+
     inv = await db.get(SupplierInvoice, invoice_id)
     if not inv or inv.tenant_id != tid:
         raise HTTPException(404, "Invoice not found")
+    if inv.status == "cancelled":
+        raise HTTPException(400, "Cannot edit a cancelled invoice")
+
+    # ── Update header fields ──────────────────────────────────
     if body.invoice_no   is not None: inv.invoice_no   = body.invoice_no
     if body.invoice_date is not None: inv.invoice_date = body.invoice_date
     if body.notes        is not None: inv.notes        = body.notes
-    if body.gst_rate     is not None:
-        inv.gst_rate = Decimal(str(body.gst_rate))
-        # Recalculate GST amounts
-        subtotal = inv.subtotal
-        gst_amt  = (subtotal * inv.gst_rate / 100).quantize(Decimal("0.01"))
-        if body.gst_type == "inter":
-            inv.cgst = Decimal("0"); inv.sgst = Decimal("0"); inv.igst = gst_amt
-        else:
-            half = (gst_amt / 2).quantize(Decimal("0.01"))
-            inv.cgst = half; inv.sgst = gst_amt - half; inv.igst = Decimal("0")
-        inv.grand_total = subtotal + gst_amt
-        inv.outstanding = max(Decimal("0"), inv.grand_total - inv.amount_paid)
-    if body.gst_type is not None: inv.gst_type = body.gst_type
+
+    gst_rate = Decimal(str(body.gst_rate)) if body.gst_rate is not None else inv.gst_rate
+    gst_type = body.gst_type if body.gst_type is not None else inv.gst_type
+
+    # ── Replace items if provided ─────────────────────────────
+    if body.items is not None:
+        if not body.items:
+            raise HTTPException(400, "Invoice must have at least one item")
+
+        old_items_r = await db.execute(
+            select(SupplierInvoiceItem).where(SupplierInvoiceItem.invoice_id == invoice_id)
+        )
+        old_items = old_items_r.scalars().all()
+
+        # Reverse stock for each old item at its ORIGINAL purchase rate
+        for old_item in old_items:
+            if old_item.category and old_item.category.value == "Polish Charges":
+                continue
+            stock_r = await db.execute(
+                select(StockItem).where(
+                    StockItem.tenant_id == tid,
+                    StockItem.category  == old_item.category,
+                    StockItem.purity    == old_item.purity,
+                    StockItem.unit      == old_item.unit,
+                ).limit(1)
+            )
+            stock = stock_r.scalar_one_or_none()
+            if not stock:
+                continue
+            # Find and zero the original FIFO lot
+            orig_txn_r = await db.execute(
+                select(StockTransaction).where(
+                    StockTransaction.stock_item_id == stock.id,
+                    StockTransaction.txn_type      == StockTxnType.purchase,
+                    StockTransaction.reason        == f"Supplier Invoice {inv.invoice_no}",
+                ).order_by(StockTransaction.id.desc()).limit(1)
+            )
+            orig_txn = orig_txn_r.scalar_one_or_none()
+            original_rate = (
+                orig_txn.purchase_rate
+                if orig_txn and orig_txn.purchase_rate
+                else old_item.rate
+            )
+            if orig_txn:
+                orig_txn.lot_remaining = Decimal("0")
+            stock.qty_on_hand = max(Decimal("0"), stock.qty_on_hand - old_item.qty)
+            db.add(StockTransaction(
+                tenant_id=tid, stock_item_id=stock.id,
+                txn_type=StockTxnType.adjustment, qty=-old_item.qty,
+                purchase_rate=original_rate, invoice_id=None,
+                reason=f"Edit Reversal — Supplier Invoice {inv.invoice_no}",
+                txn_date=date.today(), lot_remaining=None, created_by=uid,
+            ))
+
+        # Delete old items
+        for old_item in old_items:
+            await db.delete(old_item)
+        await db.flush()
+
+        # Create new items + add stock at new rates
+        subtotal = Decimal("0")
+        new_inv_no = body.invoice_no or inv.invoice_no
+
+        for it in body.items:
+            item_amt  = Decimal(str(it.qty * it.rate + it.making_charges))
+            subtotal += item_amt
+            db.add(SupplierInvoiceItem(
+                invoice_id=invoice_id, tenant_id=tid,
+                category=CategoryEnum(it.category), purity=it.purity,
+                description=it.description, hsn_code=it.hsn_code,
+                qty=Decimal(str(it.qty)), unit=UnitEnum(it.unit),
+                rate=Decimal(str(it.rate)),
+                making_charges=Decimal(str(it.making_charges)),
+                amount=item_amt,
+            ))
+            if it.category == "Polish Charges":
+                continue
+            stock_r = await db.execute(
+                select(StockItem).where(
+                    StockItem.tenant_id == tid,
+                    StockItem.category  == CategoryEnum(it.category),
+                    StockItem.purity    == it.purity,
+                    StockItem.unit      == UnitEnum(it.unit),
+                ).limit(1)
+            )
+            stock = stock_r.scalar_one_or_none()
+            if not stock:
+                stock = StockItem(
+                    tenant_id=tid, category=CategoryEnum(it.category),
+                    purity=it.purity, description=it.description,
+                    unit=UnitEnum(it.unit), qty_on_hand=Decimal("0"),
+                )
+                db.add(stock)
+                await db.flush()
+            stock.qty_on_hand += Decimal(str(it.qty))
+            db.add(StockTransaction(
+                tenant_id=tid, stock_item_id=stock.id,
+                txn_type=StockTxnType.purchase, qty=Decimal(str(it.qty)),
+                purchase_rate=Decimal(str(it.rate)), invoice_id=None,
+                reason=f"Supplier Invoice {new_inv_no}",
+                txn_date=body.invoice_date or inv.invoice_date,
+                lot_remaining=Decimal(str(it.qty)), created_by=uid,
+            ))
+
+        # Recalculate totals
+        cgst = sgst = igst = Decimal("0")
+        if gst_type in ("CGST+SGST", "intra"):
+            cgst = sgst = (subtotal * gst_rate / 200).quantize(Decimal("0.01"))
+        elif gst_type in ("IGST", "inter"):
+            igst = (subtotal * gst_rate / 100).quantize(Decimal("0.01"))
+        grand_total = subtotal + cgst + sgst + igst
+        inv.subtotal = subtotal; inv.cgst = cgst; inv.sgst = sgst; inv.igst = igst
+        inv.gst_rate = gst_rate; inv.gst_type = gst_type; inv.grand_total = grand_total
+        inv.outstanding = max(Decimal("0"), grand_total - inv.amount_paid)
+        inv.payment_status = ("paid" if inv.outstanding <= 0
+                              else "partial" if inv.amount_paid > 0 else "unpaid")
+
+    else:
+        # Header-only: recalculate GST if rate/type changed
+        if body.gst_rate is not None or body.gst_type is not None:
+            subtotal = inv.subtotal
+            cgst = sgst = igst = Decimal("0")
+            if gst_type in ("CGST+SGST", "intra"):
+                cgst = sgst = (subtotal * gst_rate / 200).quantize(Decimal("0.01"))
+            elif gst_type in ("IGST", "inter"):
+                igst = (subtotal * gst_rate / 100).quantize(Decimal("0.01"))
+            inv.cgst = cgst; inv.sgst = sgst; inv.igst = igst
+            inv.gst_rate = gst_rate; inv.gst_type = gst_type
+            inv.grand_total = subtotal + cgst + sgst + igst
+            inv.outstanding = max(Decimal("0"), inv.grand_total - inv.amount_paid)
+
     await db.commit()
-    return {"message": "Invoice updated"}
+    return {"message": "Invoice updated", "id": invoice_id}
+
 
 @router.delete("/invoices/{invoice_id}")
 async def cancel_supplier_invoice(
@@ -520,9 +655,10 @@ async def cancel_supplier_invoice(
     """
     Cancel a purchase invoice and REVERSE the stock update.
     For each line item:
-      - Deducts the same qty that was added when the invoice was created
-      - Creates a StockTransaction with the ORIGINAL purchase_rate from the invoice item
-      - Clamps qty_on_hand at zero (handles partial FIFO sales already made)
+      - Finds the ORIGINAL StockTransaction lot created when this invoice was received
+      - Uses that lot's purchase_rate (the original purchase price) for FIFO reversal
+      - Deducts the same qty that was added, zeroing the lot_remaining on the original lot
+      - Clamps qty_on_hand at zero (handles cases where stock was already partially sold)
     """
     tid = payload["tenant_id"]
     uid = payload.get("user_id")
@@ -544,7 +680,7 @@ async def cancel_supplier_invoice(
         if item.category and item.category.value == "Polish Charges":
             continue
 
-        # Find the matching stock item (same tenant, category, purity, unit)
+        # Find the matching stock item
         stock_r = await db.execute(
             select(StockItem).where(
                 StockItem.tenant_id == tid,
@@ -554,25 +690,47 @@ async def cancel_supplier_invoice(
             ).limit(1)
         )
         stock = stock_r.scalar_one_or_none()
+        if not stock:
+            continue
 
-        if stock:
-            # Reverse: subtract the qty that was added on purchase
-            # Clamp at zero — some stock may have already been sold via FIFO
-            stock.qty_on_hand = max(Decimal("0"), stock.qty_on_hand - item.qty)
+        # Find the ORIGINAL purchase StockTransaction for this invoice lot
+        # Created with reason = "Supplier Invoice {invoice_no}"
+        orig_txn_r = await db.execute(
+            select(StockTransaction).where(
+                StockTransaction.stock_item_id == stock.id,
+                StockTransaction.txn_type      == StockTxnType.purchase,
+                StockTransaction.reason        == f"Supplier Invoice {inv.invoice_no}",
+            ).order_by(StockTransaction.id.desc()).limit(1)
+        )
+        orig_txn = orig_txn_r.scalar_one_or_none()
 
-            # Record the reversal transaction using the ORIGINAL invoice purchase rate
-            db.add(StockTransaction(
-                tenant_id     = tid,
-                stock_item_id = stock.id,
-                txn_type      = StockTxnType.adjustment,
-                qty           = -item.qty,          # negative = stock going out
-                purchase_rate = item.rate,           # original rate preserved for audit
-                invoice_id    = None,
-                reason        = f"Cancellation of Purchase Invoice {inv.invoice_no}",
-                txn_date      = inv.invoice_date,
-                lot_remaining = None,
-                created_by    = uid,
-            ))
+        # Use original purchase_rate from the lot; fall back to item.rate if not found
+        original_rate = (
+            orig_txn.purchase_rate
+            if orig_txn and orig_txn.purchase_rate
+            else item.rate
+        )
+
+        # Zero out the original lot's lot_remaining so FIFO stops consuming it
+        if orig_txn:
+            orig_txn.lot_remaining = Decimal("0")
+
+        # Reverse: subtract qty, clamp at zero
+        stock.qty_on_hand = max(Decimal("0"), stock.qty_on_hand - item.qty)
+
+        # Record the reversal at the ORIGINAL purchase rate so FIFO valuation is exact
+        db.add(StockTransaction(
+            tenant_id     = tid,
+            stock_item_id = stock.id,
+            txn_type      = StockTxnType.adjustment,
+            qty           = -item.qty,           # negative = stock going out
+            purchase_rate = original_rate,        # original purchase rate preserved
+            invoice_id    = None,
+            reason        = f"Cancellation of Purchase Invoice {inv.invoice_no}",
+            txn_date      = date.today(),
+            lot_remaining = None,
+            created_by    = uid,
+        ))
 
     inv.status = "cancelled"
     await db.commit()
