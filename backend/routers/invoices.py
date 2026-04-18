@@ -214,6 +214,8 @@ async def _deduct_stock(
     """
     Deduct sold quantities from stock on hand (FIFO basis).
     Stock availability must be pre-checked via _check_stock_availability().
+    Also records the FIFO-weighted average purchase_rate on the sale transaction
+    so that cancellations can restore stock at the ORIGINAL purchase value.
     """
     for item in items:
         # Polish Charges are calculation-only — no stock deduction
@@ -225,15 +227,55 @@ async def _deduct_stock(
         if not stock:
             continue  # pre-check already caught this; defensive skip
 
-        # Reduce qty_on_hand
+        # ── Compute FIFO avg purchase_rate for qty being sold ──────────────
+        # Fetch all open purchase/opening batches in FIFO order (oldest first)
+        batches_result = await db.execute(
+            select(StockTransaction)
+            .where(
+                StockTransaction.stock_item_id == stock.id,
+                StockTransaction.qty > 0,          # IN transactions only
+                StockTransaction.txn_type.in_([
+                    StockTxnType.purchase,
+                    StockTxnType.opening,
+                    StockTxnType.adjustment,
+                ]),
+            )
+            .order_by(StockTransaction.txn_date, StockTransaction.id)
+        )
+        batches = batches_result.scalars().all()
+
+        # Walk FIFO batches to find weighted avg rate for qty sold
+        qty_to_consume = item.qty
+        weighted_value = Decimal("0")
+        for batch in batches:
+            if qty_to_consume <= 0:
+                break
+            available = (batch.lot_remaining
+                         if batch.lot_remaining is not None
+                         else abs(batch.qty))
+            if available <= 0:
+                continue
+            take = min(available, qty_to_consume)
+            rate = batch.purchase_rate or Decimal("0")
+            weighted_value += take * rate
+            qty_to_consume -= take
+
+        fifo_avg_rate = (
+            (weighted_value / item.qty).quantize(Decimal("0.01"))
+            if item.qty > 0 and weighted_value > 0
+            else Decimal("0")
+        )
+
+        # ── Reduce qty_on_hand ─────────────────────────────────────────────
         stock.qty_on_hand = stock.qty_on_hand - item.qty
 
-        # Record stock-out transaction
+        # ── Record stock-out transaction with FIFO rate captured ───────────
         db.add(StockTransaction(
             tenant_id=tenant_id,
             stock_item_id=stock.id,
             txn_type=StockTxnType.sale,
             qty=-item.qty,
+            purchase_rate=fifo_avg_rate,   # original purchase value — used on cancellation
             txn_date=invoice_date,
             reason=f"Sale — Invoice ID {invoice_id}",
             created_by=created_by,
@@ -248,7 +290,9 @@ async def _restore_stock(
 ) -> None:
     """
     Restore stock qty_on_hand when an invoice is cancelled.
-    Issue 9 fix.
+    Uses the ORIGINAL FIFO purchase_rate stored on the sale transaction
+    so that FIFO valuation re-enters the stock at its original purchase value,
+    not at the current market / batch rate.
     """
     items_result = await db.execute(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice.id)
@@ -256,17 +300,45 @@ async def _restore_stock(
     items = items_result.scalars().all()
 
     for item in items:
+        cat_val = getattr(item.category, 'value', str(item.category))
+        if cat_val == "Polish Charges":
+            continue
+
         stock = await _find_stock(db, tenant_id, item.category, item.purity)
         if not stock:
             continue
 
+        # ── Find the original sale transaction to recover purchase_rate ────
+        # The sale transaction was created by _deduct_stock with reason:
+        # "Sale — Invoice ID {invoice.id}" and purchase_rate = FIFO avg at sale time
+        sale_txn_result = await db.execute(
+            select(StockTransaction)
+            .where(
+                StockTransaction.stock_item_id == stock.id,
+                StockTransaction.txn_type      == StockTxnType.sale,
+                StockTransaction.reason        == f"Sale — Invoice ID {invoice.id}",
+            )
+            .order_by(StockTransaction.id.desc())
+            .limit(1)
+        )
+        sale_txn = sale_txn_result.scalar_one_or_none()
+        original_rate = (
+            sale_txn.purchase_rate
+            if sale_txn and sale_txn.purchase_rate
+            else Decimal("0")
+        )
+
+        # ── Restore qty_on_hand ────────────────────────────────────────────
         stock.qty_on_hand += item.qty
 
+        # ── Record restoration as a new FIFO IN lot at original rate ───────
         db.add(StockTransaction(
             tenant_id=tenant_id,
             stock_item_id=stock.id,
             txn_type=StockTxnType.adjustment,
             qty=item.qty,
+            purchase_rate=original_rate,   # original purchase value — correct FIFO entry
+            lot_remaining=item.qty,        # treat as a fresh FIFO lot
             txn_date=date.today(),
             reason=f"Cancelled — Invoice {invoice.invoice_no}",
             created_by=created_by,
@@ -688,13 +760,25 @@ async def edit_invoice(
         if not body.items:
             raise HTTPException(status_code=400, detail="Invoice must have at least one item")
 
-        # 1. Restore stock for old items (reverse the original sale deductions)
+        # 1. Restore stock for old items at ORIGINAL FIFO purchase_rate
         old_items_result = await db.execute(
             select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
         )
         old_items = old_items_result.scalars().all()
+
+        # Pre-fetch all sale transactions for this invoice keyed by stock_item_id
+        sale_txns_result = await db.execute(
+            select(StockTransaction).where(
+                StockTransaction.txn_type == StockTxnType.sale,
+                StockTransaction.reason  == f"Sale — Invoice ID {invoice_id}",
+            )
+        )
+        sale_txns_by_stock = {t.stock_item_id: t for t in sale_txns_result.scalars().all()}
+
         for old_item in old_items:
-            # Handle None purity correctly — use is_(None) instead of == None
+            cat_val = getattr(old_item.category, 'value', str(old_item.category))
+            if cat_val == "Polish Charges":
+                continue
             purity_filter = (
                 StockItem.purity.is_(None)
                 if old_item.purity is None
@@ -710,7 +794,27 @@ async def edit_invoice(
             )
             stock = stock_result.scalar_one_or_none()
             if stock:
-                stock.qty_on_hand += old_item.qty   # restore sold qty
+                stock.qty_on_hand += old_item.qty   # restore qty
+
+                # Recover original purchase_rate from the sale transaction
+                sale_txn = sale_txns_by_stock.get(stock.id)
+                original_rate = (
+                    sale_txn.purchase_rate
+                    if sale_txn and sale_txn.purchase_rate
+                    else Decimal("0")
+                )
+                # Record as a proper FIFO IN lot at original purchase value
+                db.add(StockTransaction(
+                    tenant_id=tenant_id,
+                    stock_item_id=stock.id,
+                    txn_type=StockTxnType.adjustment,
+                    qty=old_item.qty,
+                    purchase_rate=original_rate,
+                    lot_remaining=old_item.qty,
+                    txn_date=date.today(),
+                    reason=f"Edit Reversal — Invoice {invoice_id}",
+                    created_by=int(payload["sub"]),
+                ))
 
         # 2. Delete old items and old stock transactions for this invoice
         for old_item in old_items:

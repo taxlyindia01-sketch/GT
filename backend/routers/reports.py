@@ -460,6 +460,10 @@ def _parse_reason(reason: str) -> tuple:
     m = re.match(r'Purchase\s*[\u2014\-]+\s*Stock IN', r, re.IGNORECASE)
     if m:
         return ('purchase_adj', None)
+    # Edit reversal — stock restored when an invoice is re-edited
+    m = re.match(r'Edit Reversal\s*[\u2014\-]+\s*Invoice\s+(\d+)', r, re.IGNORECASE)
+    if m:
+        return ('cancelled_id', int(m.group(1)))
     return ('none', None)
 
 
@@ -634,15 +638,14 @@ async def fifo_report(
 
             # ── FIFO IN / OUT ────────────────────────────────────
             if qty > 0:
-                # ── BUG 2 FIX: Cancellation adjustment with no purchase_rate ──
-                # When a cancelled invoice creates a stock-restore adjustment, the
-                # purchase_rate may be None. Use the oldest FIFO batch's rate so
-                # the restored stock re-enters at the correct original cost.
+                # ── Cancellation / restoration rate resolution ────────────
+                # Since _restore_stock now always stores the original FIFO purchase_rate
+                # on the adjustment transaction, rate will already be correct.
+                # Fallback (for OLD cancellation transactions created before this fix):
+                # if rate is still zero, use oldest batch rate or avg consumed rate.
                 if rate == Decimal("0") and fifo_batches:
-                    # Inherit rate from the oldest available batch (FIFO order)
                     rate = fifo_batches[0]["purchase_rate"]
                 elif rate == Decimal("0") and not fifo_batches and value_out_total > 0:
-                    # All batches consumed — use avg of what was consumed
                     if qty_out_total > 0:
                         rate = value_out_total / qty_out_total
 
