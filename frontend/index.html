@@ -3288,22 +3288,36 @@ document.addEventListener('DOMContentLoaded', function() {
                   <div class="fg"><label class="lbl">Invoice No</label><input class="inp" id="sinv-edit-no" placeholder="Invoice number"/></div>
                   <div class="fg"><label class="lbl">Date</label><input class="inp" type="date" id="sinv-edit-date"/></div>
                   <div class="fg"><label class="lbl">GST Rate (%)</label>
-                    <select class="inp" id="sinv-edit-gst">
+                    <select class="inp" id="sinv-edit-gst" onchange="calcSinvEditTotals()">
                       <option value="0">0%</option><option value="3">3%</option><option value="5">5%</option><option value="12">12%</option><option value="18">18%</option>
                     </select>
                   </div>
                 </div>
                 <div class="fr2" style="margin-bottom:10px;">
                   <div class="fg"><label class="lbl">GST Type</label>
-                    <select class="inp" id="sinv-edit-gsttype">
+                    <select class="inp" id="sinv-edit-gsttype" onchange="calcSinvEditTotals()">
                       <option value="intra">Intra-state (CGST+SGST)</option>
                       <option value="inter">Inter-state (IGST)</option>
                     </select>
                   </div>
                   <div class="fg"><label class="lbl">Notes</label><input class="inp" id="sinv-edit-notes" placeholder="Optional"/></div>
                 </div>
-                <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.4px;">Line Items (read-only)</div>
-                <div id="sinv-view-content"></div>
+                <div style="font-size:11px;font-weight:700;color:var(--muted);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.4px;">Line Items</div>
+                <div class="tbl-wrap" style="margin-bottom:8px;">
+                  <table class="tbl" id="sinv-edit-items-tbl" style="font-size:11px;">
+                    <thead><tr>
+                      <th>Category</th><th>Purity</th><th>Description</th><th>HSN</th>
+                      <th class="r">Qty</th><th>Unit</th><th class="r">Rate/unit</th><th class="r">Making</th><th class="r">Amount</th><th></th>
+                    </tr></thead>
+                    <tbody id="sinv-edit-items-body"></tbody>
+                  </table>
+                </div>
+                <button class="btn btn-gh btn-xs" onclick="addSinvEditItem()" style="margin-bottom:10px;">+ Add Item</button>
+                <div class="inv-totals" style="margin-bottom:10px;">
+                  <div class="inv-tot-row"><span>Subtotal</span><span id="sinv-edit-sub">₹0.00</span></div>
+                  <div class="inv-tot-row"><span id="sinv-edit-gst-lbl">GST</span><span id="sinv-edit-gst-amt">₹0.00</span></div>
+                  <div class="inv-tot-row grand"><span>Grand Total</span><span id="sinv-edit-grand">₹0.00</span></div>
+                </div>
                 <div class="ma" style="margin-top:12px;">
                   <button class="btn btn-g" id="sinv-edit-save-btn" onclick="saveSupplierInvoiceEdit()">✓ Save Changes</button>
                   <button class="btn btn-gh" onclick="document.getElementById('sinv-view-panel').style.display='none'">Cancel</button>
@@ -8078,15 +8092,17 @@ async function cancelSupplierInvoice(id, invNo) {
 }
 
 let _editInvoiceId = null;
+let _sinvEditItems = [];   // working copy of items being edited
 
 async function openEditSupplierInvoice(id) {
   _editInvoiceId = id;
+  _sinvEditItems = [];
   const panel = document.getElementById('sinv-view-panel');
-  const content = document.getElementById('sinv-view-content');
-  if (!panel || !content) return;
+  if (!panel) return;
   panel.style.display = '';
   document.getElementById('sinv-edit-err').style.display = 'none';
-  content.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);">Loading…</div>';
+  document.getElementById('sinv-edit-items-body').innerHTML =
+    '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:12px;">Loading…</td></tr>';
   panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   try {
     const [invData, itemsData] = await Promise.all([
@@ -8094,38 +8110,89 @@ async function openEditSupplierInvoice(id) {
       GET('/api/suppliers/invoices/' + id + '/items'),
     ]);
     const allInvs = Array.isArray(invData) ? invData : (invData.invoices || []);
-    const inv = allInvs.find(i => i.id === id) || {};
+    const inv   = allInvs.find(i => i.id === id) || {};
     const items = Array.isArray(itemsData) ? itemsData : (itemsData.items || []);
-    const gst = (parseFloat(inv.cgst)||0)+(parseFloat(inv.sgst)||0)+(parseFloat(inv.igst)||0);
-    // Pre-fill editable fields
-    set('sinv-edit-no',      inv.invoice_no   || '');
-    set('sinv-edit-date',    inv.invoice_date  || '');
-    set('sinv-edit-notes',   inv.notes         || '');
+
+    // Pre-fill header fields
+    set('sinv-edit-no',   inv.invoice_no  || '');
+    set('sinv-edit-date', inv.invoice_date || '');
+    set('sinv-edit-notes',inv.notes        || '');
     const gstSel = document.getElementById('sinv-edit-gst');
     if (gstSel) gstSel.value = String(inv.gst_rate || 3);
     const gstTypeSel = document.getElementById('sinv-edit-gsttype');
     if (gstTypeSel) gstTypeSel.value = inv.gst_type || 'intra';
-    // Show summary + items read-only
-    content.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;background:var(--bg2);padding:10px;border-radius:var(--r);">
-        <div><div class="lbl">Supplier</div><div style="font-weight:600;">${esc(inv.supplier_name||'')}</div></div>
-        <div><div class="lbl">Grand Total</div><div style="font-weight:700;color:var(--gold);">${inr(inv.grand_total||0)}</div></div>
-        <div><div class="lbl">Outstanding</div><div style="font-weight:700;color:var(--amb);">${inr(inv.outstanding||0)}</div></div>
-      </div>
-      <table class="tbl" style="font-size:11px;">
-        <thead><tr><th>Category</th><th>Purity</th><th>Description</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Making</th><th class="r">Amount</th></tr></thead>
-        <tbody>${items.map(it => `<tr>
-          <td>${esc(it.category||'')}</td><td>${esc(it.purity||'—')}</td>
-          <td>${esc(it.description||'')}</td>
-          <td class="r">${it.qty} ${fmtUnit(it.unit)}</td>
-          <td class="r">${inr(it.rate||0)}</td><td class="r">${inr(it.making_charges||0)}</td>
-          <td class="r" style="font-weight:700;">${inr(it.amount||0)}</td>
-        </tr>`).join('')}</tbody>
-      </table>
-      <div style="text-align:right;font-size:11px;color:var(--muted);margin-top:4px;">GST: ${inr(gst)}</div>`;
+
+    // Load items into working copy
+    _sinvEditItems = items.map(it => ({
+      category:       it.category || 'Gold',
+      purity:         it.purity   || '',
+      description:    it.description || '',
+      hsn_code:       it.hsn_code || '7113',
+      qty:            it.qty,
+      unit:           it.unit || 'grm',
+      rate:           it.rate,
+      making_charges: it.making_charges || 0,
+    }));
+    renderSinvEditItems();
   } catch(e) {
-    content.innerHTML = `<div class="alert al-r">Could not load: ${esc(e.message)}</div>`;
+    document.getElementById('sinv-edit-items-body').innerHTML =
+      `<tr><td colspan="10" class="alert al-r">Could not load: ${esc(e.message)}</td></tr>`;
   }
+}
+
+function renderSinvEditItems() {
+  const tbody = document.getElementById('sinv-edit-items-body');
+  if (!tbody) return;
+  tbody.innerHTML = _sinvEditItems.map((it, i) => `
+    <tr id="sinv-edit-row-${i}">
+      <td><select class="inp" style="width:90px;" onchange="_sinvEditItems[${i}].category=this.value;calcSinvEditTotals()">
+        <option ${it.category==='Gold'?'selected':''}>Gold</option>
+        <option ${it.category==='Silver'?'selected':''}>Silver</option>
+        <option ${it.category==='Diamond'?'selected':''}>Diamond</option>
+        <option ${it.category==='Polish Charges'?'selected':''}>Polish Charges</option>
+      </select></td>
+      <td><input class="inp" value="${esc(it.purity)}" placeholder="22K" style="width:60px;" oninput="_sinvEditItems[${i}].purity=this.value"/></td>
+      <td><input class="inp" value="${esc(it.description)}" placeholder="Description" style="min-width:120px;" oninput="_sinvEditItems[${i}].description=this.value"/></td>
+      <td><input class="inp" value="${esc(it.hsn_code)}" style="width:56px;" oninput="_sinvEditItems[${i}].hsn_code=this.value"/></td>
+      <td><input class="inp" type="number" step="0.001" min="0" value="${it.qty}" style="width:70px;" oninput="_sinvEditItems[${i}].qty=parseFloat(this.value)||0;calcSinvEditTotals()"/></td>
+      <td><select class="inp" style="width:56px;" onchange="_sinvEditItems[${i}].unit=this.value">
+        <option value="grm" ${it.unit==='grm'?'selected':''}>grm</option>
+        <option value="crt" ${it.unit==='crt'?'selected':''}>crt</option>
+      </select></td>
+      <td><input class="inp" type="number" step="0.01" min="0" value="${it.rate}" style="width:80px;" oninput="_sinvEditItems[${i}].rate=parseFloat(this.value)||0;calcSinvEditTotals()"/></td>
+      <td><input class="inp" type="number" step="0.01" min="0" value="${it.making_charges}" style="width:70px;" oninput="_sinvEditItems[${i}].making_charges=parseFloat(this.value)||0;calcSinvEditTotals()"/></td>
+      <td class="r" style="font-weight:700;min-width:80px;" id="sinv-edit-amt-${i}">${inr((it.qty||0)*(it.rate||0)+(it.making_charges||0))}</td>
+      <td><button class="btn btn-xs btn-red" onclick="_sinvEditItems.splice(${i},1);renderSinvEditItems()">✕</button></td>
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:8px;">No items — add one below</td></tr>';
+  calcSinvEditTotals();
+}
+
+function addSinvEditItem() {
+  _sinvEditItems.push({ category:'Gold', purity:'', description:'', hsn_code:'7113', qty:0, unit:'grm', rate:0, making_charges:0 });
+  renderSinvEditItems();
+}
+
+function calcSinvEditTotals() {
+  let subtotal = 0;
+  _sinvEditItems.forEach((it, i) => {
+    const amt = (it.qty||0) * (it.rate||0) + (it.making_charges||0);
+    subtotal += amt;
+    const el = document.getElementById('sinv-edit-amt-' + i);
+    if (el) el.textContent = inr(amt);
+  });
+  const gstRate = parseFloat(document.getElementById('sinv-edit-gst')?.value) || 3;
+  const gstType = document.getElementById('sinv-edit-gsttype')?.value || 'intra';
+  const gstAmt  = gstType === 'inter'
+    ? subtotal * gstRate / 100
+    : subtotal * gstRate / 100;
+  const grand = subtotal + gstAmt;
+  set('sinv-edit-sub',     inr(subtotal));
+  set('sinv-edit-gst-amt', inr(gstAmt));
+  set('sinv-edit-grand',   inr(grand));
+  const lbl = gstType === 'inter'
+    ? `IGST (${gstRate}%)`
+    : `CGST + SGST (${gstRate}%)`;
+  set('sinv-edit-gst-lbl', lbl);
 }
 
 async function saveSupplierInvoiceEdit() {
@@ -8133,10 +8200,13 @@ async function saveSupplierInvoiceEdit() {
   const err = document.getElementById('sinv-edit-err');
   const btn = document.getElementById('sinv-edit-save-btn');
   err.style.display = 'none';
-  const invoice_no  = v('sinv-edit-no');
-  const invoice_date= v('sinv-edit-date');
+  const invoice_no   = v('sinv-edit-no');
+  const invoice_date = v('sinv-edit-date');
   if (!invoice_no)   { err.style.display='block'; err.textContent='Invoice number required'; return; }
   if (!invoice_date) { err.style.display='block'; err.textContent='Date required'; return; }
+  if (!_sinvEditItems.length) { err.style.display='block'; err.textContent='At least one item required'; return; }
+  const invalidItem = _sinvEditItems.find(it => !it.description || it.qty <= 0 || it.rate < 0);
+  if (invalidItem) { err.style.display='block'; err.textContent='Each item needs a description, qty > 0 and rate ≥ 0'; return; }
   setBtnLoading(btn, true);
   try {
     await PUT('/api/suppliers/invoices/' + _editInvoiceId, {
@@ -8144,8 +8214,9 @@ async function saveSupplierInvoiceEdit() {
       gst_rate: parseFloat(v('sinv-edit-gst')) || 3,
       gst_type: v('sinv-edit-gsttype') || 'intra',
       notes:    v('sinv-edit-notes') || null,
+      items:    _sinvEditItems,
     });
-    toast('Invoice updated ✓', 'success');
+    toast('Purchase invoice updated ✓', 'success');
     document.getElementById('sinv-view-panel').style.display = 'none';
     loadSupplierInvoices();
   } catch(e) { err.style.display='block'; err.textContent=e.message; }
