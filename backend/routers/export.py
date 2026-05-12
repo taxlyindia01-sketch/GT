@@ -24,6 +24,7 @@ from models import (
     Invoice, InvoiceItem, Customer, Payment,
     CashEntry, Advance, AdvanceAllocation, StockItem, StockTransaction,
     Supplier, SupplierInvoice, SupplierInvoiceItem, SupplierPayment, SupplierAdvance,
+    CategoryEnum,
 )
 from utils.auth import get_current_user_payload
 from utils.business import current_fy, SFT_THRESHOLD
@@ -1313,7 +1314,7 @@ async def export_fifo_excel(
     stocks_r = await db.execute(
         select(StockItem).where(
             StockItem.tenant_id == tenant_id,
-            StockItem.category  != "Polish Charges",
+            StockItem.category  != CategoryEnum.PolishCharges,
             StockItem.is_active == True,
         ).order_by(StockItem.category, StockItem.purity, StockItem.description)
     )
