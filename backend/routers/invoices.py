@@ -1,12 +1,9 @@
 # routers/invoices.py
-# Changes vs v4 original:
-#  Issue 1  — Auto-save customer to master when creating invoice (upsert)
-#  Issue 2  — GET /{id}/items endpoint so PDF preview can load line items
-#  Issue 3  — PUT /{id}/amend  endpoint for full invoice edit
-#  Issue 9  — Deduct stock qty_on_hand when invoice created; restore on cancel
-#  P11      — TCS removed; PAN mandatory when invoice value > ₹2,00,000
-#  P11      — cancel returns credit_note_no in response
-#  CANCEL   — Exact FIFO layer reversal via sale_fifo_allocations table
+# Inventory Engine v2 — uses utils/inventory.py for all stock movements.
+#
+# EDIT  → utils/inventory.edit_sale_release + post_sale  (no register rows during release)
+# CANCEL→ utils/inventory.cancel_sale  (exact FIFO reversal, no recomputation)
+
 import re
 from decimal import Decimal
 from datetime import date
@@ -19,16 +16,23 @@ from sqlalchemy import select, func
 from database import get_db
 from models import (
     Invoice, InvoiceItem, Customer, StockItem, StockTransaction,
-    InvoiceStatus, PaymentStatus, StockTxnType, CategoryEnum,
-    SaleFifoAllocation,
+    InvoiceStatus, PaymentStatus, StockTxnType, StockMovementType,
+    CategoryEnum, InventoryFifoConsumption,
 )
 from utils.auth import get_current_user_payload
 from utils.business import (
     calculate_gst, generate_invoice_no,
     is_sft_flagged, pan_is_mandatory,
 )
+from utils.inventory import (
+    ItemCtx, post_sale, cancel_sale, edit_sale_release,
+    _find_stock as _inv_find_stock,
+)
 
 router = APIRouter()
+
+PAN_THRESHOLD = Decimal("200000")
+
 
 # ── Schemas ───────────────────────────────────────────────────
 
@@ -58,13 +62,12 @@ class InvoiceCreate(BaseModel):
     notes:           Optional[str] = None
 
 class InvoiceAmend(BaseModel):
-    """Fields that can be edited after invoice creation."""
-    invoice_date:    Optional[date]   = None
-    customer_pan:    Optional[str]    = None
-    customer_gstin:  Optional[str]    = None
-    pay_mode:        Optional[str]    = None
-    notes:           Optional[str]    = None
-    amendment_note:  Optional[str]    = None
+    invoice_date:   Optional[date] = None
+    customer_pan:   Optional[str]  = None
+    customer_gstin: Optional[str]  = None
+    pay_mode:       Optional[str]  = None
+    notes:          Optional[str]  = None
+    amendment_note: Optional[str]  = None
 
 class InvoiceOut(BaseModel):
     id:              int
@@ -91,351 +94,57 @@ class InvoiceOut(BaseModel):
     class Config:
         from_attributes = True
 
+class InvoiceEditBody(BaseModel):
+    invoice_date:    Optional[date]           = None
+    customer_mobile: Optional[str]            = None
+    customer_name:   Optional[str]            = None
+    customer_pan:    Optional[str]            = None
+    customer_state:  Optional[str]            = None
+    customer_gstin:  Optional[str]            = None
+    pay_mode:        Optional[str]            = None
+    gst_type:        Optional[str]            = None
+    gst_rate:        Optional[float]          = None
+    round_off:       Optional[float]          = None
+    notes:           Optional[str]            = None
+    items:           Optional[list[InvoiceItemIn]] = None
+
 
 # ── Helpers ───────────────────────────────────────────────────
 
-PAN_THRESHOLD = Decimal("200000")   # ₹2,00,000 — PAN mandatory above this
-
-async def _upsert_customer(
-    db: AsyncSession,
-    tenant_id: int,
-    mobile: str,
-    name: str,
-    state: str,
-    pan: Optional[str],
-    gstin: Optional[str],
-) -> tuple["Customer", bool]:
-    """
-    Create customer if not exists, update name/PAN/GSTIN if new info available.
-    Returns (customer, created_flag).
-    Issue 1 fix.
-    """
+async def _upsert_customer(db, tenant_id, mobile, name, state, pan, gstin):
     customer = await db.get(Customer, (mobile, tenant_id))
-    created = False
+    created  = False
     if not customer:
         customer = Customer(
-            mobile=mobile,
-            tenant_id=tenant_id,
-            name=name,
-            state=state,
-            pan=pan or None,
-            gstin=gstin or None,
-            cash_receipts_fy=Decimal("0"),
-            sft_flagged=False,
+            mobile=mobile, tenant_id=tenant_id, name=name, state=state,
+            pan=pan or None, gstin=gstin or None,
+            cash_receipts_fy=Decimal("0"), sft_flagged=False,
         )
         db.add(customer)
         created = True
     else:
-        # Update PAN / GSTIN if now provided and was missing
-        if pan and not customer.pan:
-            customer.pan = pan
-        if gstin and not customer.gstin:
-            customer.gstin = gstin
-        # Always keep name in sync
+        if pan and not customer.pan:   customer.pan   = pan
+        if gstin and not customer.gstin: customer.gstin = gstin
         customer.name = name
     return customer, created
 
 
-async def _find_stock(db: "AsyncSession", tenant_id: int, category, purity: "str | None"):
-    """
-    Find best-matching StockItem.
-    Priority: exact purity match > NULL-purity catch-all > any purity for category.
-    This fixes the 'No stock' false-negative when stock master has NULL purity.
-    """
-    from sqlalchemy import case as sa_case, or_
-    filters = [
-        StockItem.tenant_id == tenant_id,
-        StockItem.category  == category,
-        StockItem.is_active == True,
-    ]
-    if purity:
-        filters.append(or_(StockItem.purity == purity, StockItem.purity.is_(None)))
-    stmt = (
-        select(StockItem)
-        .where(*filters)
-        .order_by(
-            sa_case((StockItem.purity == purity, 0), else_=1) if purity else StockItem.id
-        )
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
-
-
-async def _check_stock_availability(
-    db: AsyncSession,
-    tenant_id: int,
-    items: list["InvoiceItem"],
-) -> None:
-    """
-    Pre-check: raise 422 if any item has insufficient stock in stock master.
-    Called BEFORE creating the invoice so nothing is committed on failure.
-    Uses _find_stock() so NULL-purity stock master rows match any purity request.
-    Polish Charges category is skipped — it is calculation-only, not linked to stock.
-    NOTE: items may be InvoiceItem ORM objects whose category/unit are still plain
-    strings (not yet coerced to Enum by SQLAlchemy). Use getattr(.value) safely.
-    """
+async def _check_stock_availability(db, tenant_id, items):
     for item in items:
         cat_val  = getattr(item.category, 'value', str(item.category))
         unit_val = getattr(item.unit,     'value', str(item.unit))
-        # Polish Charges are calculation-only — no stock deduction or check needed
         if cat_val == "Polish Charges":
             continue
-        stock = await _find_stock(db, tenant_id, item.category, item.purity)
+        stock = await _inv_find_stock(db, tenant_id, item.category, item.purity)
         if not stock:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"No stock item found for {cat_val}"
-                    f"{' / ' + item.purity if item.purity else ''}. "
-                    "Please add the item to Stock Master first."
-                ),
-            )
+            raise HTTPException(422, f"No stock found for {cat_val}"
+                f"{' / '+item.purity if item.purity else ''}. Add to Stock Master first.")
         if stock.qty_on_hand < item.qty:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Insufficient stock for {cat_val}"
-                    f"{' / ' + item.purity if item.purity else ''}: "
-                    f"available {float(stock.qty_on_hand):.3f} {unit_val}, "
-                    f"requested {float(item.qty):.3f} {unit_val}."
-                ),
-            )
-
-
-
-
-async def _deduct_stock(
-    db: AsyncSession,
-    tenant_id: int,
-    created_by: int,
-    invoice_id: int,
-    invoice_date: date,
-    items: list["InvoiceItem"],
-) -> None:
-    """
-    Deduct sold quantities from stock on hand using strict FIFO.
-
-    EXACT REVERSAL DESIGN (cancellation support):
-    For each item sold this function:
-      1. Walks open FIFO lots oldest-first and consumes qty from each
-      2. Writes lot_remaining back to each consumed lot row (persistent state)
-      3. Creates one StockTransaction (txn_type=sale) with qty=-item.qty
-         and purchase_rate = FIFO-weighted avg (for display / COGS reports)
-      4. Creates one SaleFifoAllocation row per lot consumed, storing:
-           sale_txn_id, lot_txn_id, qty_consumed, purchase_rate (snapshot)
-
-    On cancellation _restore_stock reads the SaleFifoAllocation rows and:
-      - Restores lot_remaining on each original lot exactly
-      - Creates a mirror IN transaction at the SAME rate as the original OUT
-      - No recomputation of any kind
-    """
-    for item in items:
-        cat_val = getattr(item.category, 'value', str(item.category))
-        if cat_val == "Polish Charges":
-            continue
-
-        stock = await _find_stock(db, tenant_id, item.category, item.purity)
-        if not stock:
-            continue
-
-        # ── Fetch all open IN lots in FIFO order (oldest date, lowest id) ─
-        batches_result = await db.execute(
-            select(StockTransaction)
-            .where(
-                StockTransaction.stock_item_id == stock.id,
-                StockTransaction.qty > 0,
-                StockTransaction.txn_type.in_([
-                    StockTxnType.purchase,
-                    StockTxnType.opening,
-                    StockTxnType.adjustment,
-                ]),
-            )
-            .order_by(StockTransaction.txn_date, StockTransaction.id)
-        )
-        batches = batches_result.scalars().all()
-
-        # ── Walk lots: consume qty, record allocations, update lot_remaining ─
-        qty_to_consume = item.qty
-        weighted_value = Decimal("0")
-        layer_allocations: list[tuple[StockTransaction, Decimal]] = []
-
-        for batch in batches:
-            if qty_to_consume <= 0:
-                break
-            available = (
-                batch.lot_remaining
-                if batch.lot_remaining is not None
-                else abs(batch.qty)
-            )
-            if available <= 0:
-                continue
-
-            take = min(available, qty_to_consume)
-            rate = batch.purchase_rate or Decimal("0")
-
-            weighted_value       += take * rate
-            qty_to_consume       -= take
-            layer_allocations.append((batch, take))
-
-            # ── Write lot_remaining back immediately — persistent FIFO state ─
-            batch.lot_remaining = (available - take).quantize(Decimal("0.001"))
-
-        fifo_avg_rate = (
-            (weighted_value / item.qty).quantize(Decimal("0.01"))
-            if item.qty > 0 and weighted_value > 0
-            else Decimal("0")
-        )
-
-        # ── Reduce qty_on_hand ─────────────────────────────────────────────
-        stock.qty_on_hand = stock.qty_on_hand - item.qty
-
-        # ── Create the sale StockTransaction ──────────────────────────────
-        sale_txn = StockTransaction(
-            tenant_id=tenant_id,
-            stock_item_id=stock.id,
-            txn_type=StockTxnType.sale,
-            qty=-item.qty,
-            purchase_rate=fifo_avg_rate,   # FIFO-weighted avg — for COGS display
-            txn_date=invoice_date,
-            reason=f"Sale — Invoice ID {invoice_id}",
-            created_by=created_by,
-        )
-        db.add(sale_txn)
-        await db.flush()   # need sale_txn.id for allocation foreign key
-
-        # ── Persist per-layer allocation snapshot ─────────────────────────
-        for lot_txn, qty_consumed in layer_allocations:
-            db.add(SaleFifoAllocation(
-                tenant_id     = tenant_id,
-                sale_txn_id   = sale_txn.id,
-                lot_txn_id    = lot_txn.id,
-                qty_consumed  = qty_consumed.quantize(Decimal("0.001")),
-                purchase_rate = lot_txn.purchase_rate or Decimal("0"),
-            ))
-
-
-
-async def _restore_stock(
-    db: AsyncSession,
-    tenant_id: int,
-    created_by: int,
-    invoice: "Invoice",
-) -> None:
-    """
-    Restore stock when a sale invoice is cancelled.
-
-    EXACT REVERSAL (no recomputation):
-    1. Load SaleFifoAllocation rows for the sale transaction
-    2. For each allocation row: restore lot_remaining on the original lot
-    3. Create ONE cancellation IN StockTransaction per original OUT transaction,
-       using the SAME qty and SAME rate stored at sale time — direction reversed only
-    4. Restore stock.qty_on_hand by the same qty that was sold
-
-    Falls back to stored purchase_rate on the sale transaction for invoices
-    created before the SaleFifoAllocation table existed (no allocations rows).
-    In that case the cancellation IN still uses the exact rate from the sale txn,
-    just without per-lot restoration.
-    """
-    items_result = await db.execute(
-        select(InvoiceItem).where(InvoiceItem.invoice_id == invoice.id)
-    )
-    items = items_result.scalars().all()
-
-    for item in items:
-        cat_val = getattr(item.category, 'value', str(item.category))
-        if cat_val == "Polish Charges":
-            continue
-
-        stock = await _find_stock(db, tenant_id, item.category, item.purity)
-        if not stock:
-            continue
-
-        # ── Find the original sale StockTransaction ────────────────────────
-        sale_txn_result = await db.execute(
-            select(StockTransaction)
-            .where(
-                StockTransaction.stock_item_id == stock.id,
-                StockTransaction.txn_type      == StockTxnType.sale,
-                StockTransaction.reason        == f"Sale — Invoice ID {invoice.id}",
-            )
-            .order_by(StockTransaction.id.desc())
-            .limit(1)
-        )
-        sale_txn = sale_txn_result.scalar_one_or_none()
-
-        # ── Load per-layer allocation snapshot ────────────────────────────
-        if sale_txn:
-            alloc_result = await db.execute(
-                select(SaleFifoAllocation)
-                .where(SaleFifoAllocation.sale_txn_id == sale_txn.id)
-                .order_by(SaleFifoAllocation.id)   # original FIFO order preserved by insert order
-            )
-            allocations = alloc_result.scalars().all()
-        else:
-            allocations = []
-
-        if allocations:
-            # ── EXACT REVERSAL PATH — per-lot restoration ─────────────────
-            # For each allocation row: restore the lot_remaining on the
-            # original purchase lot.  This is the mirror of what _deduct_stock
-            # did — each batch.lot_remaining was reduced by qty_consumed;
-            # now we add qty_consumed back to it.
-
-            for alloc in allocations:
-                lot_txn = await db.get(StockTransaction, alloc.lot_txn_id)
-                if lot_txn is None:
-                    continue
-                # Restore lot_remaining — no computation, just undo the deduction
-                current_remaining = lot_txn.lot_remaining or Decimal("0")
-                lot_txn.lot_remaining = (
-                    current_remaining + alloc.qty_consumed
-                ).quantize(Decimal("0.001"))
-
-            # Restore qty_on_hand
-            stock.qty_on_hand += item.qty
-
-            # ── Mirror OUT → IN: same qty, same rate, direction reversed ──
-            # The cancellation transaction is a direct reversal of the original
-            # sale transaction.  Rate = same fifo_avg_rate; no recomputation.
-            db.add(StockTransaction(
-                tenant_id     = tenant_id,
-                stock_item_id = stock.id,
-                txn_type      = StockTxnType.adjustment,
-                qty           = item.qty,                             # +qty (IN)
-                purchase_rate = sale_txn.purchase_rate,               # EXACT original rate
-                lot_remaining = item.qty,                             # available for future FIFO
-                txn_date      = date.today(),
-                reason        = f"Cancelled — Invoice {invoice.invoice_no}",
-                created_by    = created_by,
-            ))
-
-        else:
-            # ── FALLBACK PATH — pre-migration invoices ─────────────────────
-            # No SaleFifoAllocation rows exist for this sale (invoice was created
-            # before migration 08).  Use the purchase_rate stored on the sale
-            # transaction row — this is the FIFO-weighted avg at sale time,
-            # which is the best available approximation.  Per-lot restoration
-            # is not possible for historical data but the rate is still correct.
-            original_rate = (
-                sale_txn.purchase_rate
-                if sale_txn and sale_txn.purchase_rate
-                else Decimal("0")
-            )
-
-            stock.qty_on_hand += item.qty
-
-            db.add(StockTransaction(
-                tenant_id     = tenant_id,
-                stock_item_id = stock.id,
-                txn_type      = StockTxnType.adjustment,
-                qty           = item.qty,
-                purchase_rate = original_rate,   # original rate — no recomputation
-                lot_remaining = item.qty,
-                txn_date      = date.today(),
-                reason        = f"Cancelled — Invoice {invoice.invoice_no}",
-                created_by    = created_by,
-            ))
+            raise HTTPException(422,
+                f"Insufficient stock for {cat_val}"
+                f"{' / '+item.purity if item.purity else ''}: "
+                f"available {float(stock.qty_on_hand):.3f} {unit_val}, "
+                f"requested {float(item.qty):.3f} {unit_val}.")
 
 
 # ── Create Invoice ────────────────────────────────────────────
@@ -443,167 +152,109 @@ async def _restore_stock(
 @router.post("/", status_code=201)
 async def create_invoice(
     body:    InvoiceCreate,
-    payload: dict          = Depends(get_current_user_payload),
-    db:      AsyncSession  = Depends(get_db),
+    payload: dict         = Depends(get_current_user_payload),
+    db:      AsyncSession = Depends(get_db),
 ):
-    """
-    Create a new invoice.
-
-    Business rules:
-    - Customer auto-created/updated in master (Issue 1)
-    - TCS always zero; 269ST violation flag returned in response
-    - PAN mandatory when invoice value > ₹2,00,000 regardless of pay mode (P11)
-    - Stock qty_on_hand deducted for each item sold (Issue 9)
-    - Returns customer_created flag so frontend can show toast (Issue 1)
-    """
     tenant_id = payload["tenant_id"]
+    uid       = int(payload["sub"])
 
     if not body.items:
-        raise HTTPException(status_code=400, detail="Invoice must have at least one item.")
-
-    # Validate PAN format if provided
+        raise HTTPException(400, "Invoice must have at least one item.")
     if body.customer_pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', body.customer_pan):
-        raise HTTPException(status_code=422, detail="PAN format invalid. Expected: ABCDE1234F")
+        raise HTTPException(422, "PAN format invalid. Expected: ABCDE1234F")
 
-    # Calculate line item totals
-    subtotal  = Decimal("0")
-    item_rows = []
+    subtotal, item_rows = Decimal("0"), []
     for item in body.items:
-        amount = (item.qty * item.rate + item.polish_charges * item.rate + item.making_charges).quantize(Decimal("0.01"))
-        subtotal += amount
+        amt = (item.qty * item.rate + item.polish_charges * item.rate + item.making_charges).quantize(Decimal("0.01"))
+        subtotal += amt
         item_rows.append(InvoiceItem(
-            tenant_id=tenant_id,
-            category=item.category,
-            purity=item.purity,
-            description=item.description,
-            hsn_code=item.hsn_code,
-            qty=item.qty,
-            unit=item.unit,
-            rate=item.rate,
-            polish_charges=item.polish_charges,
-            making_charges=item.making_charges,
-            amount=amount,
+            tenant_id=tenant_id, category=item.category, purity=item.purity,
+            description=item.description, hsn_code=item.hsn_code,
+            qty=item.qty, unit=item.unit, rate=item.rate,
+            polish_charges=item.polish_charges, making_charges=item.making_charges,
+            amount=amt,
         ))
 
-    # GST
-    gst = calculate_gst(subtotal, body.gst_rate, body.gst_type)
-
-    # grand_total = subtotal + GST + round_off (round_off can be +ve or -ve)
+    gst         = calculate_gst(subtotal, body.gst_rate, body.gst_type)
     round_off   = body.round_off.quantize(Decimal("0.01"))
     grand_total = subtotal + gst["total_gst"] + round_off
 
-    # 269ST flag — cash receipt >= ₹2,00,000 is a violation (shown in response)
-    SEC_269ST_THRESHOLD = Decimal("200000")
-    sec_269st_violation = (body.pay_mode == "Cash" and grand_total >= SEC_269ST_THRESHOLD)
-
-    # PAN mandatory if invoice value > ₹2,00,000 (any pay mode) — P11
     if grand_total > PAN_THRESHOLD and not body.customer_pan:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"PAN is mandatory — invoice value ₹{grand_total:,.0f} exceeds ₹2,00,000. "
-                "Enter customer PAN before proceeding."
-            ),
-        )
+        raise HTTPException(422,
+            f"PAN mandatory — invoice value ₹{grand_total:,.0f} exceeds ₹2,00,000.")
 
-    # Also check existing customer SFT status (cash FY threshold)
-    existing_cust_res = await db.execute(
-        select(Customer).where(
-            Customer.tenant_id == tenant_id,
-            Customer.mobile    == body.customer_mobile,
-        )
-    )
-    existing_cust = existing_cust_res.scalar_one_or_none()
-    if (existing_cust
-            and pan_is_mandatory(existing_cust.cash_receipts_fy)
-            and not body.customer_pan):
-        raise HTTPException(
-            status_code=422,
-            detail="PAN is mandatory — customer's cumulative cash receipts this FY exceed ₹2,00,000.",
-        )
+    existing = (await db.execute(
+        select(Customer).where(Customer.tenant_id == tenant_id, Customer.mobile == body.customer_mobile)
+    )).scalar_one_or_none()
+    if existing and pan_is_mandatory(existing.cash_receipts_fy) and not body.customer_pan:
+        raise HTTPException(422, "PAN mandatory — customer's FY cash receipts exceed ₹2,00,000.")
 
-    # Auto-generate invoice number
-    count_result = await db.execute(
-        select(func.count()).where(Invoice.tenant_id == tenant_id)
-    )
-    seq        = (count_result.scalar() or 0) + 1
+    seq        = ((await db.execute(select(func.count()).where(Invoice.tenant_id == tenant_id))).scalar() or 0) + 1
     invoice_no = generate_invoice_no(tenant_id, seq)
 
-    # Pre-check stock availability BEFORE any db.flush (nothing committed on failure)
     await _check_stock_availability(db, tenant_id, item_rows)
 
     invoice = Invoice(
-        tenant_id=tenant_id,
-        invoice_no=invoice_no,
+        tenant_id=tenant_id, invoice_no=invoice_no,
         invoice_date=body.invoice_date,
-        customer_mobile=body.customer_mobile,
-        customer_name=body.customer_name,
-        customer_pan=body.customer_pan,
-        customer_state=body.customer_state,
-        customer_gstin=body.customer_gstin,
-        pay_mode=body.pay_mode,
-        gst_type=body.gst_type,
-        gst_rate=body.gst_rate,
-        subtotal=subtotal,
-        cgst=gst["cgst"],
-        sgst=gst["sgst"],
-        igst=gst["igst"],
-        tcs_applicable=False,
-        tcs_base=Decimal("0"),
-        tcs_amount=Decimal("0"),
-        grand_total=grand_total,   # grand_total already includes round_off
-        outstanding=grand_total,
-        status=InvoiceStatus.active,
-        payment_status=PaymentStatus.unpaid,
-        notes=body.notes,
-        created_by=int(payload["sub"]),
+        customer_mobile=body.customer_mobile, customer_name=body.customer_name,
+        customer_pan=body.customer_pan, customer_state=body.customer_state,
+        customer_gstin=body.customer_gstin, pay_mode=body.pay_mode,
+        gst_type=body.gst_type, gst_rate=body.gst_rate,
+        subtotal=subtotal, cgst=gst["cgst"], sgst=gst["sgst"], igst=gst["igst"],
+        tcs_applicable=False, tcs_base=Decimal("0"), tcs_amount=Decimal("0"),
+        grand_total=grand_total, outstanding=grand_total,
+        status=InvoiceStatus.active, payment_status=PaymentStatus.unpaid,
+        notes=body.notes, created_by=uid,
     )
     db.add(invoice)
-    await db.flush()   # get invoice.id
+    await db.flush()
 
     for item in item_rows:
         item.invoice_id = invoice.id
         db.add(item)
+    await db.flush()
 
-    await db.flush()   # item IDs available
-
-    # Auto-upsert customer (Issue 1)
     _, customer_created = await _upsert_customer(
-        db, tenant_id,
-        body.customer_mobile, body.customer_name, body.customer_state,
-        body.customer_pan, body.customer_gstin,
+        db, tenant_id, body.customer_mobile, body.customer_name,
+        body.customer_state, body.customer_pan, body.customer_gstin,
     )
 
-    # Deduct stock (Issue 9)
-    await _deduct_stock(
-        db, tenant_id, int(payload["sub"]),
-        invoice.id, body.invoice_date, item_rows,
-    )
+    # ── Post stock movements via inventory engine ──────────────────────────
+    for item in item_rows:
+        cat_val = getattr(item.category, 'value', str(item.category))
+        if cat_val == "Polish Charges":
+            continue
+        stock = await _inv_find_stock(db, tenant_id, item.category, item.purity)
+        if not stock:
+            continue
+        ctx = ItemCtx(
+            category=item.category, purity=item.purity,
+            qty=item.qty, rate=item.rate,
+            invoice_id=invoice.id, invoice_item_id=item.id,
+            txn_date=body.invoice_date,
+            reason=f"Sale — Invoice {invoice_no}",
+            created_by=uid,
+        )
+        await post_sale(db, tenant_id, ctx, stock)
 
     await db.commit()
     await db.refresh(invoice)
 
+    sec_269st = (body.pay_mode == "Cash" and grand_total >= Decimal("200000"))
     return {
-        "id":               invoice.id,
-        "invoice_no":       invoice.invoice_no,
-        "invoice_date":     invoice.invoice_date.isoformat(),
-        "customer_mobile":  invoice.customer_mobile,
-        "customer_name":    invoice.customer_name,
-        "customer_pan":     invoice.customer_pan,
-        "pay_mode":         invoice.pay_mode.value,
-        "subtotal":         float(invoice.subtotal),
-        "cgst":             float(invoice.cgst),
-        "sgst":             float(invoice.sgst),
-        "igst":             float(invoice.igst),
-        "tcs_applicable":   False,
-        "tcs_amount":       0.0,
-        "round_off":        float(invoice.round_off or 0),
-        "sec_269st_violation": sec_269st_violation,
-        "grand_total":      float(invoice.grand_total),
-        "outstanding":      float(invoice.outstanding),
-        "payment_status":   invoice.payment_status.value,
-        "status":           invoice.status.value,
-        "customer_created": customer_created,   # Issue 1 — frontend toast
+        "id": invoice.id, "invoice_no": invoice.invoice_no,
+        "invoice_date": invoice.invoice_date.isoformat(),
+        "customer_mobile": invoice.customer_mobile, "customer_name": invoice.customer_name,
+        "customer_pan": invoice.customer_pan, "pay_mode": invoice.pay_mode.value,
+        "subtotal": float(invoice.subtotal), "cgst": float(invoice.cgst),
+        "sgst": float(invoice.sgst), "igst": float(invoice.igst),
+        "tcs_applicable": False, "tcs_amount": 0.0,
+        "round_off": float(invoice.round_off or 0),
+        "sec_269st_violation": sec_269st,
+        "grand_total": float(invoice.grand_total), "outstanding": float(invoice.outstanding),
+        "payment_status": invoice.payment_status.value, "status": invoice.status.value,
+        "customer_created": customer_created,
     }
 
 
@@ -611,34 +262,24 @@ async def create_invoice(
 
 @router.get("/", response_model=list[InvoiceOut])
 async def list_invoices(
-    from_date:        Optional[date] = Query(None),
-    to_date:          Optional[date] = Query(None),
-    mobile:           Optional[str]  = Query(None),
-    status:           Optional[str]  = Query(None),
-    include_cancelled: bool          = Query(False),
-    payload:          dict           = Depends(get_current_user_payload),
-    db:               AsyncSession   = Depends(get_db),
+    from_date:         Optional[date] = Query(None),
+    to_date:           Optional[date] = Query(None),
+    mobile:            Optional[str]  = Query(None),
+    status:            Optional[str]  = Query(None),
+    include_cancelled: bool           = Query(False),
+    payload:           dict           = Depends(get_current_user_payload),
+    db:                AsyncSession   = Depends(get_db),
 ):
-    """List invoices with optional filters."""
     tenant_id = payload["tenant_id"]
     q = select(Invoice).where(Invoice.tenant_id == tenant_id)
-
     if not include_cancelled:
         q = q.where(Invoice.status != InvoiceStatus.cancelled)
-
     q = q.order_by(Invoice.invoice_date.desc(), Invoice.id.desc())
-
-    if from_date:
-        q = q.where(Invoice.invoice_date >= from_date)
-    if to_date:
-        q = q.where(Invoice.invoice_date <= to_date)
-    if mobile:
-        q = q.where(Invoice.customer_mobile == mobile)
-    if status:
-        q = q.where(Invoice.payment_status == status)
-
-    result = await db.execute(q)
-    return result.scalars().all()
+    if from_date: q = q.where(Invoice.invoice_date >= from_date)
+    if to_date:   q = q.where(Invoice.invoice_date <= to_date)
+    if mobile:    q = q.where(Invoice.customer_mobile == mobile)
+    if status:    q = q.where(Invoice.payment_status == status)
+    return (await db.execute(q)).scalars().all()
 
 
 # ── Get Single Invoice ────────────────────────────────────────
@@ -649,15 +290,13 @@ async def get_invoice(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
-    invoice = await db.get(Invoice, invoice_id)
-    if not invoice or invoice.tenant_id != payload["tenant_id"]:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    return invoice
+    inv = await db.get(Invoice, invoice_id)
+    if not inv or inv.tenant_id != payload["tenant_id"]:
+        raise HTTPException(404, "Invoice not found")
+    return inv
 
 
 # ── Get Invoice Items ─────────────────────────────────────────
-# Issue 2 — PDF preview was showing "Items not available" because
-# the items endpoint did not exist in v4 original.
 
 @router.get("/{invoice_id}/items")
 async def get_invoice_items(
@@ -665,40 +304,23 @@ async def get_invoice_items(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
-    """Return line items for an invoice. Used by PDF preview."""
-    invoice = await db.get(Invoice, invoice_id)
-    if not invoice or invoice.tenant_id != payload["tenant_id"]:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    result = await db.execute(
-        select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
-    )
-    items = result.scalars().all()
+    inv = await db.get(Invoice, invoice_id)
+    if not inv or inv.tenant_id != payload["tenant_id"]:
+        raise HTTPException(404, "Invoice not found")
+    items = (await db.execute(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id))).scalars().all()
     return {
-        "invoice_id": invoice_id,
-        "invoice_no": invoice.invoice_no,
-        "items": [
-            {
-                "id":             item.id,
-                "category":       item.category.value,
-                "purity":         item.purity or "",
-                "description":    item.description,
-                "hsn_code":       item.hsn_code,
-                "qty":            float(item.qty),
-                "unit":           item.unit.value,
-                "rate":           float(item.rate),
-                "polish_charges": float(item.polish_charges) if item.polish_charges else 0.0,
-                "making_charges": float(item.making_charges),
-                "amount":         float(item.amount),
-            }
-            for item in items
-        ],
+        "invoice_id": invoice_id, "invoice_no": inv.invoice_no,
+        "items": [{
+            "id": i.id, "category": i.category.value, "purity": i.purity or "",
+            "description": i.description, "hsn_code": i.hsn_code,
+            "qty": float(i.qty), "unit": i.unit.value, "rate": float(i.rate),
+            "polish_charges": float(i.polish_charges or 0),
+            "making_charges": float(i.making_charges), "amount": float(i.amount),
+        } for i in items],
     }
 
 
-# ── Amend / Edit Invoice ──────────────────────────────────────
-# Issue 3 — full edit endpoint. Only non-financial fields can be changed
-# post-creation to preserve audit trail (date, PAN, GSTIN, pay_mode, notes).
+# ── Amend Invoice (non-financial fields only) ─────────────────
 
 @router.put("/{invoice_id}/amend")
 async def amend_invoice(
@@ -707,46 +329,35 @@ async def amend_invoice(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
-    """
-    Edit / amend a non-cancelled invoice.
-    Financial totals (subtotal, GST, grand_total) are NOT recalculated —
-    only metadata fields are updated to preserve the original audit trail.
-    """
-    invoice = await db.get(Invoice, invoice_id)
-    if not invoice or invoice.tenant_id != payload["tenant_id"]:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    if invoice.status == InvoiceStatus.cancelled:
-        raise HTTPException(status_code=400, detail="Cannot amend a cancelled invoice")
+    inv = await db.get(Invoice, invoice_id)
+    if not inv or inv.tenant_id != payload["tenant_id"]:
+        raise HTTPException(404, "Invoice not found")
+    if inv.status == InvoiceStatus.cancelled:
+        raise HTTPException(400, "Cannot amend a cancelled invoice")
 
-    if body.invoice_date is not None:
-        invoice.invoice_date = body.invoice_date
+    if body.invoice_date   is not None: inv.invoice_date   = body.invoice_date
+    if body.customer_gstin is not None: inv.customer_gstin = body.customer_gstin or None
+    if body.pay_mode       is not None: inv.pay_mode       = body.pay_mode
+    if body.notes          is not None: inv.notes          = body.notes
+
     if body.customer_pan is not None:
         pan = body.customer_pan.upper().strip()
         if pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', pan):
-            raise HTTPException(status_code=422, detail="PAN format invalid. Expected: ABCDE1234F")
-        invoice.customer_pan = pan or None
-        # Sync PAN to customer master
-        cust = await db.get(Customer, (invoice.customer_mobile, payload["tenant_id"]))
+            raise HTTPException(422, "PAN format invalid. Expected: ABCDE1234F")
+        inv.customer_pan = pan or None
+        cust = await db.get(Customer, (inv.customer_mobile, payload["tenant_id"]))
         if cust and pan:
             cust.pan = pan
-    if body.customer_gstin is not None:
-        invoice.customer_gstin = body.customer_gstin or None
-    if body.pay_mode is not None:
-        invoice.pay_mode = body.pay_mode
-    if body.notes is not None:
-        invoice.notes = body.notes
 
     await db.commit()
-    await db.refresh(invoice)
-
-    return {
-        "message":    "Invoice amended successfully",
-        "invoice_no": invoice.invoice_no,
-        "invoice_id": invoice.id,
-    }
+    await db.refresh(inv)
+    return {"message": "Invoice amended successfully", "invoice_no": inv.invoice_no, "invoice_id": inv.id}
 
 
 # ── Cancel Invoice ────────────────────────────────────────────
+#
+# EXACT REVERSAL via utils/inventory.cancel_sale().
+# No recomputation. No current rates. Only direction changes.
 
 @router.put("/{invoice_id}/cancel")
 async def cancel_invoice(
@@ -755,49 +366,57 @@ async def cancel_invoice(
     payload:    dict         = Depends(get_current_user_payload),
     db:         AsyncSession = Depends(get_db),
 ):
-    """
-    Cancel an invoice and issue a credit note.
-    Restores stock qty_on_hand for all items (Issue 9).
-    """
-    invoice = await db.get(Invoice, invoice_id)
-    if not invoice or invoice.tenant_id != payload["tenant_id"]:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-    if invoice.status == InvoiceStatus.cancelled:
-        raise HTTPException(status_code=400, detail="Invoice already cancelled")
+    inv = await db.get(Invoice, invoice_id)
+    if not inv or inv.tenant_id != payload["tenant_id"]:
+        raise HTTPException(404, "Invoice not found")
+    if inv.status == InvoiceStatus.cancelled:
+        raise HTTPException(400, "Invoice already cancelled")
 
-    invoice.status = InvoiceStatus.cancelled
+    tenant_id  = payload["tenant_id"]
+    uid        = int(payload["sub"])
+    cancel_dt  = date.today()
 
-    # Restore stock for cancelled invoice (Issue 9)
-    await _restore_stock(db, payload["tenant_id"], int(payload["sub"]), invoice)
+    items = (await db.execute(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id))).scalars().all()
 
+    for item in items:
+        cat_val = getattr(item.category, 'value', str(item.category))
+        if cat_val == "Polish Charges":
+            continue
+        stock = await _inv_find_stock(db, tenant_id, item.category, item.purity)
+        if not stock:
+            continue
+        await cancel_sale(
+            db         = db,
+            tenant_id  = tenant_id,
+            created_by = uid,
+            invoice_id = invoice_id,
+            invoice_no = inv.invoice_no,
+            item_qty   = item.qty,
+            stock      = stock,
+            cancel_date= cancel_dt,
+        )
+
+    inv.status = InvoiceStatus.cancelled
     await db.commit()
 
-    credit_note_no = f"CN-{invoice.invoice_no}"
     return {
-        "message":        f"Invoice {invoice.invoice_no} cancelled",
-        "credit_note_no": credit_note_no,
-        "invoice_no":     invoice.invoice_no,
+        "message":        f"Invoice {inv.invoice_no} cancelled",
+        "credit_note_no": f"CN-{inv.invoice_no}",
+        "invoice_no":     inv.invoice_no,
     }
 
 
-# ── Full Invoice Edit ──────────────────────────────────────────
-# Issue 2: Replace invoice content (items + header) while keeping invoice_no and id.
-# This cancels the old stock movement and recalculates everything fresh.
-
-class InvoiceEditBody(BaseModel):
-    invoice_date:    Optional[date]    = None
-    customer_mobile: Optional[str]     = None
-    customer_name:   Optional[str]     = None
-    customer_pan:    Optional[str]     = None
-    customer_state:  Optional[str]     = None
-    customer_gstin:  Optional[str]     = None
-    pay_mode:        Optional[str]     = None
-    gst_type:        Optional[str]     = None
-    gst_rate:        Optional[float]   = None
-    round_off:       Optional[float]   = None
-    notes:           Optional[str]     = None
-    items:           Optional[list[InvoiceItemIn]]  = None
-
+# ── Full Invoice Edit ─────────────────────────────────────────
+#
+# EDIT PRINCIPLE: NEVER creates reversal or adjustment rows in the register.
+#
+# For each old item:
+#   1. edit_sale_release() → restores lot_remaining on consumed lots,
+#      deletes old sale_out StockTransaction (no visible row)
+# For each new item:
+#   2. post_sale() → fresh FIFO consumption, new sale_out row + allocations
+#
+# Net result: stock register shows original sale entry replaced cleanly.
 
 @router.put("/{invoice_id}/edit")
 async def edit_invoice(
@@ -806,24 +425,18 @@ async def edit_invoice(
     payload:    dict          = Depends(get_current_user_payload),
     db:         AsyncSession  = Depends(get_db),
 ):
-    """
-    Full invoice edit — update header fields and/or replace all line items.
-    - Validates PAN if grand total > Rs.2,00,000
-    - Restores old stock, deletes old items, creates new items, deducts new stock
-    - Recalculates subtotal, GST, grand_total, outstanding
-    """
     tenant_id = payload["tenant_id"]
+    uid       = int(payload["sub"])
     invoice   = await db.get(Invoice, invoice_id)
     if not invoice or invoice.tenant_id != tenant_id:
-        raise HTTPException(status_code=404, detail="Invoice not found")
+        raise HTTPException(404, "Invoice not found")
     if invoice.status.value == "cancelled":
-        raise HTTPException(status_code=400, detail="Cannot edit a cancelled invoice")
+        raise HTTPException(400, "Cannot edit a cancelled invoice")
 
-    # Validate PAN format if provided
     if body.customer_pan and not re.match(r'^[A-Z]{5}[0-9]{4}[A-Z]$', body.customer_pan):
-        raise HTTPException(status_code=422, detail="PAN format invalid. Expected: ABCDE1234F")
+        raise HTTPException(422, "PAN format invalid. Expected: ABCDE1234F")
 
-    # ── Update header fields ──────────────────────────────────
+    # ── Header fields ─────────────────────────────────────────
     if body.invoice_date    is not None: invoice.invoice_date    = body.invoice_date
     if body.customer_mobile is not None: invoice.customer_mobile = body.customer_mobile
     if body.customer_name   is not None: invoice.customer_name   = body.customer_name
@@ -834,165 +447,104 @@ async def edit_invoice(
     if body.gst_type        is not None: invoice.gst_type        = body.gst_type
     if body.gst_rate        is not None: invoice.gst_rate        = Decimal(str(body.gst_rate))
     if body.notes           is not None: invoice.notes           = body.notes
-    # round_off header-only update (when items not changed — still recalc grand_total)
+
     if body.round_off is not None and body.items is None:
-        new_round = Decimal(str(body.round_off)).quantize(Decimal("0.01"))
-        # grand_total stores subtotal + gst + round_off; round_off is derived from it
-        base_total = invoice.subtotal + invoice.cgst + invoice.sgst + invoice.igst + invoice.tcs_amount
+        new_round   = Decimal(str(body.round_off)).quantize(Decimal("0.01"))
+        base_total  = invoice.subtotal + invoice.cgst + invoice.sgst + invoice.igst + invoice.tcs_amount
         invoice.grand_total = base_total + new_round
         invoice.outstanding = max(Decimal("0"), invoice.grand_total - invoice.amount_paid)
-        if invoice.outstanding <= 0:
-            invoice.payment_status = PaymentStatus.paid
-        elif invoice.amount_paid > 0:
-            invoice.payment_status = PaymentStatus.partial
-        else:
-            invoice.payment_status = PaymentStatus.unpaid
+        invoice.payment_status = (
+            PaymentStatus.paid    if invoice.outstanding <= 0 else
+            PaymentStatus.partial if invoice.amount_paid > 0  else
+            PaymentStatus.unpaid
+        )
 
-    # ── Replace items if provided ─────────────────────────────
     if body.items is not None:
         if not body.items:
-            raise HTTPException(status_code=400, detail="Invoice must have at least one item")
+            raise HTTPException(400, "Invoice must have at least one item")
 
-        # 1. Restore stock for old items at ORIGINAL FIFO purchase_rate
-        old_items_result = await db.execute(
-            select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
-        )
-        old_items = old_items_result.scalars().all()
+        old_items = (await db.execute(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id))).scalars().all()
 
-        # Pre-fetch all sale transactions for this invoice keyed by stock_item_id
-        sale_txns_result = await db.execute(
-            select(StockTransaction).where(
-                StockTransaction.txn_type == StockTxnType.sale,
-                StockTransaction.reason  == f"Sale — Invoice ID {invoice_id}",
-            )
-        )
-        sale_txns_by_stock = {t.stock_item_id: t for t in sale_txns_result.scalars().all()}
-
+        # ── Release old FIFO allocations silently ─────────────────────────
+        # edit_sale_release restores lot_remaining and deletes the old sale_out
+        # row. No visible register entry created.
         for old_item in old_items:
             cat_val = getattr(old_item.category, 'value', str(old_item.category))
             if cat_val == "Polish Charges":
                 continue
-            purity_filter = (
-                StockItem.purity.is_(None)
-                if old_item.purity is None
-                else StockItem.purity == old_item.purity
-            )
-            stock_result = await db.execute(
-                select(StockItem).where(
-                    StockItem.tenant_id == tenant_id,
-                    StockItem.category  == old_item.category,
-                    purity_filter,
-                    StockItem.is_active == True,
-                ).limit(1)
-            )
-            stock = stock_result.scalar_one_or_none()
+            stock = await _inv_find_stock(db, tenant_id, old_item.category, old_item.purity)
             if stock:
-                stock.qty_on_hand += old_item.qty   # restore qty
+                await edit_sale_release(db, stock, invoice_id)
 
-                # Recover original purchase_rate from the sale transaction
-                sale_txn = sale_txns_by_stock.get(stock.id)
-                original_rate = (
-                    sale_txn.purchase_rate
-                    if sale_txn and sale_txn.purchase_rate
-                    else Decimal("0")
-                )
-                # Record as a proper FIFO IN lot at original purchase value
-                db.add(StockTransaction(
-                    tenant_id=tenant_id,
-                    stock_item_id=stock.id,
-                    txn_type=StockTxnType.adjustment,
-                    qty=old_item.qty,
-                    purchase_rate=original_rate,
-                    lot_remaining=old_item.qty,
-                    txn_date=date.today(),
-                    reason=f"Edit Reversal — Invoice {invoice_id}",
-                    created_by=int(payload["sub"]),
-                ))
-
-        # 2. Delete old items and old stock transactions for this invoice
+        # Delete old invoice items
         for old_item in old_items:
             await db.delete(old_item)
         await db.flush()
 
-        old_txn_result = await db.execute(
-            select(StockTransaction).where(
-                StockTransaction.invoice_id == invoice_id,
-                StockTransaction.txn_type   == StockTxnType.sale,
-            )
-        )
-        for txn in old_txn_result.scalars().all():
-            await db.delete(txn)
-        await db.flush()
-
-        # 3. Recalculate with new items
+        # ── Build new items ───────────────────────────────────────────────
         new_gst_type = body.gst_type or invoice.gst_type.value
         new_gst_rate = Decimal(str(body.gst_rate)) if body.gst_rate else invoice.gst_rate
 
-        subtotal  = Decimal("0")
-        new_rows  = []
+        subtotal, new_rows = Decimal("0"), []
         for item in body.items:
-            amount = (item.qty * item.rate + item.polish_charges * item.rate + item.making_charges).quantize(Decimal("0.01"))
-            subtotal += amount
+            amt = (item.qty * item.rate + item.polish_charges * item.rate + item.making_charges).quantize(Decimal("0.01"))
+            subtotal += amt
             new_rows.append(InvoiceItem(
-                tenant_id=tenant_id,
-                invoice_id=invoice_id,
-                category=item.category,
-                purity=item.purity,
-                description=item.description,
-                hsn_code=item.hsn_code,
-                qty=item.qty,
-                unit=item.unit,
-                rate=item.rate,
-                polish_charges=item.polish_charges,
-                making_charges=item.making_charges,
-                amount=amount,
+                tenant_id=tenant_id, invoice_id=invoice_id,
+                category=item.category, purity=item.purity,
+                description=item.description, hsn_code=item.hsn_code,
+                qty=item.qty, unit=item.unit, rate=item.rate,
+                polish_charges=item.polish_charges, making_charges=item.making_charges,
+                amount=amt,
             ))
 
-        gst          = calculate_gst(subtotal, new_gst_rate, new_gst_type)
-        new_round    = Decimal(str(body.round_off)) if body.round_off is not None else (invoice.round_off or Decimal("0"))
-        new_grand    = subtotal + gst["total_gst"] + new_round
+        gst       = calculate_gst(subtotal, new_gst_rate, new_gst_type)
+        new_round = Decimal(str(body.round_off)) if body.round_off is not None else (invoice.round_off or Decimal("0"))
+        new_grand = subtotal + gst["total_gst"] + new_round
 
-        # PAN check
         if new_grand > PAN_THRESHOLD and not (body.customer_pan or invoice.customer_pan):
-            raise HTTPException(
-                status_code=422,
-                detail=f"PAN is mandatory — invoice value Rs.{new_grand:,.0f} exceeds Rs.2,00,000.",
-            )
+            raise HTTPException(422, f"PAN mandatory — invoice value ₹{new_grand:,.0f} exceeds ₹2,00,000.")
 
-        # Update invoice financials
-        amount_already_paid = invoice.amount_paid
         invoice.subtotal    = subtotal
-        invoice.cgst        = gst["cgst"]
-        invoice.sgst        = gst["sgst"]
-        invoice.igst        = gst["igst"]
+        invoice.cgst        = gst["cgst"]; invoice.sgst = gst["sgst"]; invoice.igst = gst["igst"]
         invoice.gst_rate    = new_gst_rate
-        invoice.grand_total = new_grand   # new_grand already includes round_off
-        invoice.outstanding = max(Decimal("0"), new_grand - amount_already_paid)
-        if invoice.outstanding <= 0:
-            invoice.payment_status = PaymentStatus.paid
-        elif invoice.amount_paid > 0:
-            invoice.payment_status = PaymentStatus.partial
-        else:
-            invoice.payment_status = PaymentStatus.unpaid
+        invoice.grand_total = new_grand
+        invoice.outstanding = max(Decimal("0"), new_grand - invoice.amount_paid)
+        invoice.payment_status = (
+            PaymentStatus.paid    if invoice.outstanding <= 0 else
+            PaymentStatus.partial if invoice.amount_paid > 0  else
+            PaymentStatus.unpaid
+        )
 
         for item in new_rows:
             db.add(item)
         await db.flush()
 
-        # 4. Deduct stock for new items
-        await _deduct_stock(
-            db, tenant_id, int(payload["sub"]),
-            invoice_id, invoice.invoice_date, new_rows,
-        )
+        # ── Post new sale_out transactions via inventory engine ────────────
+        for item in new_rows:
+            cat_val = getattr(item.category, 'value', str(item.category))
+            if cat_val == "Polish Charges":
+                continue
+            stock = await _inv_find_stock(db, tenant_id, item.category, item.purity)
+            if not stock:
+                continue
+            ctx = ItemCtx(
+                category=item.category, purity=item.purity,
+                qty=item.qty, rate=item.rate,
+                invoice_id=invoice_id, invoice_item_id=item.id,
+                txn_date=invoice.invoice_date,
+                reason=f"Sale — Invoice {invoice.invoice_no}",
+                created_by=uid,
+            )
+            await post_sale(db, tenant_id, ctx, stock)
 
     await db.commit()
     await db.refresh(invoice)
 
     return {
-        "id":              invoice.id,
-        "invoice_no":      invoice.invoice_no,
-        "message":         "Invoice updated successfully",
-        "grand_total":     float(invoice.grand_total),
-        "outstanding":     float(invoice.outstanding),
-        "payment_status":  invoice.payment_status.value,
+        "id": invoice.id, "invoice_no": invoice.invoice_no,
+        "message": "Invoice updated successfully",
+        "grand_total": float(invoice.grand_total),
+        "outstanding": float(invoice.outstanding),
+        "payment_status": invoice.payment_status.value,
     }
