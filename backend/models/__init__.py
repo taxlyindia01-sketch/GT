@@ -549,3 +549,38 @@ class SupplierAdvance(Base):
         primaryjoin="and_(SupplierAdvance.tenant_id==Supplier.tenant_id, SupplierAdvance.supplier_mobile==Supplier.mobile)",
         foreign_keys="[SupplierAdvance.tenant_id, SupplierAdvance.supplier_mobile]",
         overlaps="advances,supplier")
+
+
+# ── Sale FIFO Allocation (per-lot consumption snapshot) ───────
+#
+# Each row records exactly how much qty was consumed from one purchase/opening
+# lot when a specific sale OUT transaction was created.
+#
+# Purpose: exact cancellation reversal without any recomputation.
+#   At sale time  → write one row per lot consumed
+#   At cancel time → read these rows; undo each lot_remaining update exactly;
+#                    mirror the original OUT transaction as an IN transaction
+#
+# Design notes:
+#   - sale_txn_id  → the StockTransaction (txn_type=sale) created by _deduct_stock
+#   - lot_txn_id   → the purchase/opening StockTransaction whose lot_remaining was reduced
+#   - qty_consumed → how much was taken from that lot (sum = total sale qty)
+#   - purchase_rate → snapshot of the lot's rate at sale time (immutable after write)
+#   CASCADE DELETE: if the sale transaction row is deleted (e.g. during invoice edit),
+#   the allocation rows are automatically removed.
+
+class SaleFifoAllocation(Base):
+    __tablename__ = "sale_fifo_allocations"
+    __table_args__ = (
+        Index("ix_fifo_alloc_sale_txn", "sale_txn_id"),
+        Index("ix_fifo_alloc_lot_txn",  "lot_txn_id"),
+        Index("ix_fifo_alloc_tenant",   "tenant_id"),
+    )
+
+    id:            Mapped[int]     = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:     Mapped[int]     = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    sale_txn_id:   Mapped[int]     = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
+    lot_txn_id:    Mapped[int]     = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
+    qty_consumed:  Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
+    purchase_rate: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    created_at:    Mapped[datetime]= mapped_column(DateTime(timezone=True), default=datetime.utcnow)
