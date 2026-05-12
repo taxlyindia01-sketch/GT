@@ -1,5 +1,7 @@
 # models/__init__.py — All ORM models (mirrors PostgreSQL schema)
 # Mobile number is PRIMARY KEY for customers (per tenant)
+# Inventory Engine v2: movement_type, immutable snapshots, reversal linkage,
+#                      InventoryFifoConsumption (replaces SaleFifoAllocation)
 
 from __future__ import annotations
 import enum
@@ -10,7 +12,7 @@ from typing import Optional
 from sqlalchemy import (
     String, Integer, Numeric, Boolean, Date, DateTime,
     ForeignKey, Text, Enum as SAEnum, UniqueConstraint,
-    Index, event
+    Index, event, JSON
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
@@ -36,14 +38,14 @@ class ApprovalStatus(str, enum.Enum):
     pending  = "pending"
     approved = "approved"
     rejected = "rejected"
-    trial    = "trial"          # 10-day Google trial
+    trial    = "trial"
 
 class PayModeEnum(str, enum.Enum):
-    Cash     = "Cash"
-    UPI      = "UPI"
-    Card     = "Card"
-    NEFT     = "NEFT/RTGS"
-    Cheque   = "Cheque"
+    Cash   = "Cash"
+    UPI    = "UPI"
+    Card   = "Card"
+    NEFT   = "NEFT/RTGS"
+    Cheque = "Cheque"
 
 class GSTTypeEnum(str, enum.Enum):
     CGST_SGST = "CGST+SGST"
@@ -51,10 +53,10 @@ class GSTTypeEnum(str, enum.Enum):
     Exempt    = "Exempt"
 
 class CategoryEnum(str, enum.Enum):
-    Gold           = "Gold"
-    Silver         = "Silver"
-    Diamond        = "Diamond"
-    PolishCharges  = "Polish Charges"
+    Gold          = "Gold"
+    Silver        = "Silver"
+    Diamond       = "Diamond"
+    PolishCharges = "Polish Charges"
 
 class UnitEnum(str, enum.Enum):
     grm = "grm"
@@ -77,10 +79,31 @@ class PaymentStatus(str, enum.Enum):
     unpaid  = "unpaid"
 
 class StockTxnType(str, enum.Enum):
+    """Legacy enum kept for backward compatibility. New code uses StockMovementType."""
     purchase   = "purchase"
     sale       = "sale"
     adjustment = "adjustment"
     opening    = "opening"
+
+class StockMovementType(str, enum.Enum):
+    """
+    Explicit 6-value movement type.  This is the authoritative field for all
+    business logic, display, and reporting.
+
+    EDIT  → NEVER produces new rows in stock_transactions
+    CANCEL→ produces exactly one row with movement_type in {purchase_cancel_out,
+             sale_cancel_in} linked via reversal_of_movement_id
+    """
+    purchase_in         = "purchase_in"
+    sale_out            = "sale_out"
+    purchase_cancel_out = "purchase_cancel_out"
+    sale_cancel_in      = "sale_cancel_in"
+    opening             = "opening"
+    adjustment          = "adjustment"
+
+class ReversalType(str, enum.Enum):
+    purchase_cancel = "purchase_cancel"
+    sale_cancel     = "sale_cancel"
 
 
 # ── Tenant ───────────────────────────────────────────────────
@@ -88,28 +111,28 @@ class StockTxnType(str, enum.Enum):
 class Tenant(Base):
     __tablename__ = "tenants"
 
-    id:             Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
-    company_name:   Mapped[str]      = mapped_column(String(200), nullable=False)
-    gstin:          Mapped[str|None] = mapped_column(String(15))
-    phone:          Mapped[str|None] = mapped_column(String(15))
-    email:          Mapped[str|None] = mapped_column(String(100))
-    address:        Mapped[str|None] = mapped_column(Text)
-    state:          Mapped[str|None] = mapped_column(String(50))
-    logo_url:       Mapped[str|None] = mapped_column(Text)
-    pan:            Mapped[str|None] = mapped_column(String(10))
-    upi_id:         Mapped[str|None] = mapped_column(String(100))
-    qr_code_url:    Mapped[str|None] = mapped_column(Text)
-    bank_name:      Mapped[str|None] = mapped_column(String(100))
-    bank_account_no:Mapped[str|None] = mapped_column(String(30))
-    bank_ifsc:      Mapped[str|None] = mapped_column(String(15))
-    bank_branch:    Mapped[str|None] = mapped_column(String(100))
-    terms_conditions:Mapped[str|None]= mapped_column(Text)
-    authorised_person:Mapped[str|None]=mapped_column(String(100))
-    plan:           Mapped[PlanEnum] = mapped_column(SAEnum(PlanEnum), default=PlanEnum.demo)
-    demo_expires_at:Mapped[datetime|None] = mapped_column(DateTime(timezone=True))
-    is_active:      Mapped[bool]     = mapped_column(Boolean, default=True)
-    created_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    id:              Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_name:    Mapped[str]      = mapped_column(String(200), nullable=False)
+    gstin:           Mapped[str|None] = mapped_column(String(15))
+    phone:           Mapped[str|None] = mapped_column(String(15))
+    email:           Mapped[str|None] = mapped_column(String(100))
+    address:         Mapped[str|None] = mapped_column(Text)
+    state:           Mapped[str|None] = mapped_column(String(50))
+    logo_url:        Mapped[str|None] = mapped_column(Text)
+    pan:             Mapped[str|None] = mapped_column(String(10))
+    upi_id:          Mapped[str|None] = mapped_column(String(100))
+    qr_code_url:     Mapped[str|None] = mapped_column(Text)
+    bank_name:       Mapped[str|None] = mapped_column(String(100))
+    bank_account_no: Mapped[str|None] = mapped_column(String(30))
+    bank_ifsc:       Mapped[str|None] = mapped_column(String(15))
+    bank_branch:     Mapped[str|None] = mapped_column(String(100))
+    terms_conditions:Mapped[str|None] = mapped_column(Text)
+    authorised_person:Mapped[str|None]= mapped_column(String(100))
+    plan:            Mapped[PlanEnum] = mapped_column(SAEnum(PlanEnum), default=PlanEnum.demo)
+    demo_expires_at: Mapped[datetime|None] = mapped_column(DateTime(timezone=True))
+    is_active:       Mapped[bool]     = mapped_column(Boolean, default=True)
+    created_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at:      Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
     users:     Mapped[list[User]]     = relationship(back_populates="tenant", cascade="all, delete-orphan")
     customers: Mapped[list[Customer]] = relationship(back_populates="tenant", cascade="all, delete-orphan")
@@ -137,15 +160,15 @@ class User(Base):
     auth_provider:   Mapped[AuthProvider]   = mapped_column(SAEnum(AuthProvider), default=AuthProvider.password)
     google_id:       Mapped[str|None]       = mapped_column(String(100))
     approval_status: Mapped[ApprovalStatus] = mapped_column(SAEnum(ApprovalStatus), default=ApprovalStatus.approved)
-    trial_expires_at:Mapped[datetime|None]  = mapped_column(DateTime(timezone=True))  # Google trial expiry
-    company_name:    Mapped[str|None]       = mapped_column(String(200))               # For Google signups
+    trial_expires_at:Mapped[datetime|None]  = mapped_column(DateTime(timezone=True))
+    company_name:    Mapped[str|None]       = mapped_column(String(200))
     is_active:       Mapped[bool]           = mapped_column(Boolean, default=True)
     created_at:      Mapped[datetime]       = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     tenant: Mapped[Tenant] = relationship(back_populates="users")
 
 
-# ── Customer (Mobile = PK per tenant) ────────────────────────
+# ── Customer ──────────────────────────────────────────────────
 
 class Customer(Base):
     __tablename__ = "customers"
@@ -157,30 +180,30 @@ class Customer(Base):
     mobile:           Mapped[str]      = mapped_column(String(15), primary_key=True)
     tenant_id:        Mapped[int]      = mapped_column(Integer, ForeignKey("tenants.id", ondelete="CASCADE"), primary_key=True)
     name:             Mapped[str]      = mapped_column(String(200), nullable=False)
-    pan:              Mapped[str|None] = mapped_column(String(10))       # mandatory if cash_receipts_fy > 2L
-    state:            Mapped[str]      = mapped_column(String(50), nullable=False)   # GST state (mandatory)
+    pan:              Mapped[str|None] = mapped_column(String(10))
+    state:            Mapped[str]      = mapped_column(String(50), nullable=False)
     gstin:            Mapped[str|None] = mapped_column(String(15))
     address:          Mapped[str|None] = mapped_column(Text)
     email:            Mapped[str|None] = mapped_column(String(100))
-    cash_receipts_fy: Mapped[Decimal]  = mapped_column(Numeric(15, 2), default=0)   # rolling FY cash total
-    sft_flagged:      Mapped[bool]     = mapped_column(Boolean, default=False)       # cash > 2L in FY
+    cash_receipts_fy: Mapped[Decimal]  = mapped_column(Numeric(15, 2), default=0)
+    sft_flagged:      Mapped[bool]     = mapped_column(Boolean, default=False)
     created_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at:       Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tenant:   Mapped[Tenant]         = relationship(back_populates="customers")
-    invoices: Mapped[list[Invoice]]  = relationship(
-                                         back_populates="customer",
-                                         primaryjoin="and_(Customer.tenant_id==Invoice.tenant_id, Customer.mobile==Invoice.customer_mobile)",
-                                         foreign_keys="[Invoice.tenant_id, Invoice.customer_mobile]",
-                                         overlaps="invoices,tenant")
-    payments: Mapped[list[Payment]]  = relationship(
-                                         back_populates="customer",
-                                         primaryjoin="and_(Customer.tenant_id==Payment.tenant_id, Customer.mobile==Payment.customer_mobile)",
-                                         foreign_keys="[Payment.tenant_id, Payment.customer_mobile]")
-    advances: Mapped[list[Advance]]  = relationship(
-                                         back_populates="customer",
-                                         primaryjoin="and_(Customer.tenant_id==Advance.tenant_id, Customer.mobile==Advance.customer_mobile)",
-                                         foreign_keys="[Advance.tenant_id, Advance.customer_mobile]")
+    tenant:   Mapped[Tenant]        = relationship(back_populates="customers")
+    invoices: Mapped[list[Invoice]] = relationship(
+                  back_populates="customer",
+                  primaryjoin="and_(Customer.tenant_id==Invoice.tenant_id, Customer.mobile==Invoice.customer_mobile)",
+                  foreign_keys="[Invoice.tenant_id, Invoice.customer_mobile]",
+                  overlaps="invoices,tenant")
+    payments: Mapped[list[Payment]] = relationship(
+                  back_populates="customer",
+                  primaryjoin="and_(Customer.tenant_id==Payment.tenant_id, Customer.mobile==Payment.customer_mobile)",
+                  foreign_keys="[Payment.tenant_id, Payment.customer_mobile]")
+    advances: Mapped[list[Advance]] = relationship(
+                  back_populates="customer",
+                  primaryjoin="and_(Customer.tenant_id==Advance.tenant_id, Customer.mobile==Advance.customer_mobile)",
+                  foreign_keys="[Advance.tenant_id, Advance.customer_mobile]")
 
 
 # ── Invoice ───────────────────────────────────────────────────
@@ -189,55 +212,51 @@ class Invoice(Base):
     __tablename__ = "invoices"
     __table_args__ = (
         UniqueConstraint("tenant_id", "invoice_no"),
-        Index("ix_invoices_tenant", "tenant_id"),
-        Index("ix_invoices_date",   "tenant_id", "invoice_date"),
-        Index("ix_invoices_customer","tenant_id", "customer_mobile"),
+        Index("ix_invoices_tenant",   "tenant_id"),
+        Index("ix_invoices_date",     "tenant_id", "invoice_date"),
+        Index("ix_invoices_customer", "tenant_id", "customer_mobile"),
     )
 
-    id:               Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:        Mapped[int]           = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    invoice_no:       Mapped[str]           = mapped_column(String(30), nullable=False)
-    invoice_date:     Mapped[date]          = mapped_column(Date, nullable=False)
-    customer_mobile:  Mapped[str]           = mapped_column(String(15), nullable=False)   # FK = mobile PK
-    customer_name:    Mapped[str]           = mapped_column(String(200), nullable=False)
-    customer_pan:     Mapped[str|None]      = mapped_column(String(10))
-    customer_state:   Mapped[str|None]      = mapped_column(String(50))
-    customer_gstin:   Mapped[str|None]      = mapped_column(String(15))
-    pay_mode:         Mapped[PayModeEnum]   = mapped_column(SAEnum(PayModeEnum))
-    gst_type:         Mapped[GSTTypeEnum]   = mapped_column(SAEnum(GSTTypeEnum), default=GSTTypeEnum.CGST_SGST)
-    gst_rate:         Mapped[Decimal]       = mapped_column(Numeric(5, 2), default=3)
-    subtotal:         Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    cgst:             Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    sgst:             Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    igst:             Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    tcs_applicable:   Mapped[bool]          = mapped_column(Boolean, default=False)
-    tcs_base:         Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    tcs_amount:       Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)     # 1% of tcs_base
-    grand_total:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    amount_paid:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    outstanding:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
-    status:           Mapped[InvoiceStatus] = mapped_column(SAEnum(InvoiceStatus), default=InvoiceStatus.active)
-    payment_status:   Mapped[PaymentStatus] = mapped_column(SAEnum(PaymentStatus), default=PaymentStatus.unpaid)
-    notes:            Mapped[str|None]      = mapped_column(Text)
-    created_by:       Mapped[int|None]      = mapped_column(ForeignKey("users.id"))
-    created_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at:       Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    id:              Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[int]           = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    invoice_no:      Mapped[str]           = mapped_column(String(30), nullable=False)
+    invoice_date:    Mapped[date]          = mapped_column(Date, nullable=False)
+    customer_mobile: Mapped[str]           = mapped_column(String(15), nullable=False)
+    customer_name:   Mapped[str]           = mapped_column(String(200), nullable=False)
+    customer_pan:    Mapped[str|None]      = mapped_column(String(10))
+    customer_state:  Mapped[str|None]      = mapped_column(String(50))
+    customer_gstin:  Mapped[str|None]      = mapped_column(String(15))
+    pay_mode:        Mapped[PayModeEnum]   = mapped_column(SAEnum(PayModeEnum))
+    gst_type:        Mapped[GSTTypeEnum]   = mapped_column(SAEnum(GSTTypeEnum), default=GSTTypeEnum.CGST_SGST)
+    gst_rate:        Mapped[Decimal]       = mapped_column(Numeric(5, 2), default=3)
+    subtotal:        Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    cgst:            Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    sgst:            Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    igst:            Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    tcs_applicable:  Mapped[bool]          = mapped_column(Boolean, default=False)
+    tcs_base:        Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    tcs_amount:      Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    grand_total:     Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    amount_paid:     Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    outstanding:     Mapped[Decimal]       = mapped_column(Numeric(15, 2), default=0)
+    status:          Mapped[InvoiceStatus] = mapped_column(SAEnum(InvoiceStatus), default=InvoiceStatus.active)
+    payment_status:  Mapped[PaymentStatus] = mapped_column(SAEnum(PaymentStatus), default=PaymentStatus.unpaid)
+    notes:           Mapped[str|None]      = mapped_column(Text)
+    created_by:      Mapped[int|None]      = mapped_column(ForeignKey("users.id"))
+    created_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at:      Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    tenant:   Mapped[Tenant]          = relationship(back_populates="invoices", overlaps="customer,invoices")
-    customer: Mapped[Customer]        = relationship(back_populates="invoices",
-                                          primaryjoin="and_(Invoice.tenant_id==Customer.tenant_id, Invoice.customer_mobile==Customer.mobile)",
-                                          foreign_keys="[Invoice.tenant_id, Invoice.customer_mobile]",
-                                          overlaps="invoices,tenant")
-    items:    Mapped[list[InvoiceItem]] = relationship(back_populates="invoice", cascade="all, delete-orphan")
-    payments: Mapped[list[Payment]]   = relationship(back_populates="invoice")
+    tenant:   Mapped[Tenant]           = relationship(back_populates="invoices", overlaps="customer,invoices")
+    customer: Mapped[Customer]         = relationship(
+                  back_populates="invoices",
+                  primaryjoin="and_(Invoice.tenant_id==Customer.tenant_id, Invoice.customer_mobile==Customer.mobile)",
+                  foreign_keys="[Invoice.tenant_id, Invoice.customer_mobile]",
+                  overlaps="invoices,tenant")
+    items:    Mapped[list[InvoiceItem]]= relationship(back_populates="invoice", cascade="all, delete-orphan")
+    payments: Mapped[list[Payment]]    = relationship(back_populates="invoice")
 
     @property
     def round_off(self) -> Decimal:
-        """
-        Computed round-off: grand_total minus all known components.
-        Works for both old invoices (returns 0) and new ones (returns actual round-off).
-        Requires NO extra DB column — derived purely from existing stored values.
-        """
         total_gst = (self.cgst or Decimal("0")) + (self.sgst or Decimal("0")) + (self.igst or Decimal("0"))
         tcs       = self.tcs_amount or Decimal("0")
         base      = (self.subtotal or Decimal("0")) + total_gst + tcs
@@ -257,7 +276,7 @@ class InvoiceItem(Base):
     invoice_id:     Mapped[int]          = mapped_column(ForeignKey("invoices.id", ondelete="CASCADE"))
     tenant_id:      Mapped[int]          = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
     category:       Mapped[CategoryEnum] = mapped_column(SAEnum(CategoryEnum))
-    purity:         Mapped[str|None]     = mapped_column(String(10))      # 24K/22K/18K/14K/std/—
+    purity:         Mapped[str|None]     = mapped_column(String(10))
     description:    Mapped[str]          = mapped_column(String(300), nullable=False)
     hsn_code:       Mapped[str]          = mapped_column(String(10), default="7113")
     qty:            Mapped[Decimal]      = mapped_column(Numeric(12, 3), nullable=False)
@@ -281,22 +300,23 @@ class Payment(Base):
         Index("ix_payments_customer", "tenant_id", "customer_mobile"),
     )
 
-    id:              Mapped[int]        = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:       Mapped[int]        = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    invoice_id:      Mapped[int|None]   = mapped_column(ForeignKey("invoices.id"))
-    customer_mobile: Mapped[str]        = mapped_column(String(15), nullable=False)
-    amount:          Mapped[Decimal]    = mapped_column(Numeric(15, 2), nullable=False)
-    payment_date:    Mapped[date]       = mapped_column(Date, nullable=False)
-    pay_mode:        Mapped[PayModeEnum]= mapped_column(SAEnum(PayModeEnum))
-    reference_no:    Mapped[str|None]   = mapped_column(String(100))
-    notes:           Mapped[str|None]   = mapped_column(Text)
-    created_by:      Mapped[int|None]   = mapped_column(ForeignKey("users.id"))
-    created_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    id:              Mapped[int]         = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[int]         = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    invoice_id:      Mapped[int|None]    = mapped_column(ForeignKey("invoices.id"))
+    customer_mobile: Mapped[str]         = mapped_column(String(15), nullable=False)
+    amount:          Mapped[Decimal]     = mapped_column(Numeric(15, 2), nullable=False)
+    payment_date:    Mapped[date]        = mapped_column(Date, nullable=False)
+    pay_mode:        Mapped[PayModeEnum] = mapped_column(SAEnum(PayModeEnum))
+    reference_no:    Mapped[str|None]    = mapped_column(String(100))
+    notes:           Mapped[str|None]    = mapped_column(Text)
+    created_by:      Mapped[int|None]    = mapped_column(ForeignKey("users.id"))
+    created_at:      Mapped[datetime]    = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     invoice:  Mapped[Invoice|None] = relationship(back_populates="payments")
-    customer: Mapped[Customer]     = relationship(back_populates="payments",
-                                       primaryjoin="and_(Payment.tenant_id==Customer.tenant_id, Payment.customer_mobile==Customer.mobile)",
-                                       foreign_keys="[Payment.tenant_id, Payment.customer_mobile]")
+    customer: Mapped[Customer]     = relationship(
+                  back_populates="payments",
+                  primaryjoin="and_(Payment.tenant_id==Customer.tenant_id, Payment.customer_mobile==Customer.mobile)",
+                  foreign_keys="[Payment.tenant_id, Payment.customer_mobile]")
 
 
 # ── Cash Register ─────────────────────────────────────────────
@@ -326,38 +346,39 @@ class CashEntry(Base):
 class Advance(Base):
     __tablename__ = "advances"
 
-    id:              Mapped[int]        = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:       Mapped[int]        = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    customer_mobile: Mapped[str]        = mapped_column(String(15), nullable=False)
-    amount:          Mapped[Decimal]    = mapped_column(Numeric(15, 2), nullable=False)
-    remaining:       Mapped[Decimal]    = mapped_column(Numeric(15, 2), nullable=False)
-    advance_date:    Mapped[date]       = mapped_column(Date, nullable=False)
-    pay_mode:        Mapped[PayModeEnum]= mapped_column(SAEnum(PayModeEnum))
-    notes:           Mapped[str|None]   = mapped_column(Text)
-    created_by:      Mapped[int|None]   = mapped_column(ForeignKey("users.id"))
-    created_at:      Mapped[datetime]   = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    id:              Mapped[int]         = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:       Mapped[int]         = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    customer_mobile: Mapped[str]         = mapped_column(String(15), nullable=False)
+    amount:          Mapped[Decimal]     = mapped_column(Numeric(15, 2), nullable=False)
+    remaining:       Mapped[Decimal]     = mapped_column(Numeric(15, 2), nullable=False)
+    advance_date:    Mapped[date]        = mapped_column(Date, nullable=False)
+    pay_mode:        Mapped[PayModeEnum] = mapped_column(SAEnum(PayModeEnum))
+    notes:           Mapped[str|None]    = mapped_column(Text)
+    created_by:      Mapped[int|None]    = mapped_column(ForeignKey("users.id"))
+    created_at:      Mapped[datetime]    = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
-    customer:     Mapped[Customer]               = relationship(back_populates="advances",
-                                                     primaryjoin="and_(Advance.tenant_id==Customer.tenant_id, Advance.customer_mobile==Customer.mobile)",
-                                                     foreign_keys="[Advance.tenant_id, Advance.customer_mobile]")
-    allocations:  Mapped[list[AdvanceAllocation]] = relationship(back_populates="advance", cascade="all, delete-orphan")
+    customer:    Mapped[Customer]                = relationship(
+                     back_populates="advances",
+                     primaryjoin="and_(Advance.tenant_id==Customer.tenant_id, Advance.customer_mobile==Customer.mobile)",
+                     foreign_keys="[Advance.tenant_id, Advance.customer_mobile]")
+    allocations: Mapped[list[AdvanceAllocation]] = relationship(back_populates="advance", cascade="all, delete-orphan")
 
 
 class AdvanceAllocation(Base):
     __tablename__ = "advance_allocations"
 
-    id:               Mapped[int]     = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:        Mapped[int]     = mapped_column(ForeignKey("tenants.id"))
-    advance_id:       Mapped[int]     = mapped_column(ForeignKey("advances.id"))
-    invoice_id:       Mapped[int]     = mapped_column(ForeignKey("invoices.id"))
-    allocated_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    allocated_at:     Mapped[datetime]= mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    created_by:       Mapped[int|None]= mapped_column(ForeignKey("users.id"))
+    id:               Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:        Mapped[int]      = mapped_column(ForeignKey("tenants.id"))
+    advance_id:       Mapped[int]      = mapped_column(ForeignKey("advances.id"))
+    invoice_id:       Mapped[int]      = mapped_column(ForeignKey("invoices.id"))
+    allocated_amount: Mapped[Decimal]  = mapped_column(Numeric(15, 2), nullable=False)
+    allocated_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_by:       Mapped[int|None] = mapped_column(ForeignKey("users.id"))
 
     advance: Mapped[Advance] = relationship(back_populates="allocations")
 
 
-# ── Stock ─────────────────────────────────────────────────────
+# ── Stock Master ──────────────────────────────────────────────
 
 class StockItem(Base):
     __tablename__ = "stock_items"
@@ -377,27 +398,110 @@ class StockItem(Base):
     transactions: Mapped[list[StockTransaction]] = relationship(back_populates="stock_item", cascade="all, delete-orphan")
 
 
+# ── Stock Transaction ─────────────────────────────────────────
+
 class StockTransaction(Base):
+    """
+    Represents a single movement in the inventory register.
+
+    movement_type governs all business logic:
+      purchase_in         — received from supplier
+      sale_out            — deducted for customer sale
+      purchase_cancel_out — exact reversal of a purchase_in
+      sale_cancel_in      — exact reversal of a sale_out
+      opening             — opening balance
+      adjustment          — manual correction (NEVER created by edit/cancel logic)
+
+    EDIT rule: no new rows created; existing rows updated in-place.
+    CANCEL rule: one new row per original row; movement_type in
+                 {purchase_cancel_out, sale_cancel_in};
+                 reversal_of_movement_id → original row id.
+
+    Immutable snapshot fields (written once at posting, NEVER mutated):
+      original_qty   = abs(qty) at time of posting
+      original_rate  = purchase_rate for IN rows; FIFO-avg for OUT rows
+      original_value = original_qty * original_rate
+      fifo_snapshot  = JSON of lot allocations for sale_out rows only
+
+    lot_remaining:
+      Non-null for purchase_in / opening / sale_cancel_in rows.
+      Decremented each time a sale_out draws from this lot.
+      Incremented on sale_cancel_in (reversal restores it).
+    """
     __tablename__ = "stock_transactions"
     __table_args__ = (
-        Index("ix_stock_txn_item", "stock_item_id"),
-        Index("ix_stock_txn_date", "tenant_id", "txn_date"),
+        Index("ix_stock_txn_item",     "stock_item_id"),
+        Index("ix_stock_txn_date",     "tenant_id", "txn_date"),
+        Index("ix_stock_txn_movement", "tenant_id", "movement_type"),
+        Index("ix_stxn_reversal",      "reversal_of_movement_id"),
     )
 
-    id:            Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:     Mapped[int]           = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    stock_item_id: Mapped[int]           = mapped_column(ForeignKey("stock_items.id"))
-    txn_type:      Mapped[StockTxnType]  = mapped_column(SAEnum(StockTxnType))
-    qty:           Mapped[Decimal]       = mapped_column(Numeric(15, 3), nullable=False)  # +in / -out
-    purchase_rate: Mapped[Decimal|None]  = mapped_column(Numeric(15, 2))                  # for FIFO lots
-    invoice_id:    Mapped[int|None]      = mapped_column(ForeignKey("invoices.id"))
-    reason:        Mapped[str|None]      = mapped_column(Text)
-    txn_date:      Mapped[date]          = mapped_column(Date, nullable=False)
-    lot_remaining: Mapped[Decimal|None]  = mapped_column(Numeric(15, 3))                  # FIFO lot balance
-    created_by:    Mapped[int|None]      = mapped_column(ForeignKey("users.id"))
-    created_at:    Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    id:                      Mapped[int]                = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:               Mapped[int]                = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    stock_item_id:           Mapped[int]                = mapped_column(ForeignKey("stock_items.id"))
 
-    stock_item: Mapped[StockItem] = relationship(back_populates="transactions")
+    # ── Movement classification ──────────────────────
+    txn_type:                Mapped[StockTxnType]       = mapped_column(SAEnum(StockTxnType))
+    movement_type:           Mapped[StockMovementType]  = mapped_column(SAEnum(StockMovementType))
+
+    # ── Quantity & valuation ─────────────────────────
+    qty:                     Mapped[Decimal]            = mapped_column(Numeric(15, 3), nullable=False)
+    purchase_rate:           Mapped[Decimal|None]       = mapped_column(Numeric(15, 2))
+    lot_remaining:           Mapped[Decimal|None]       = mapped_column(Numeric(15, 3))
+
+    # ── Immutable historical snapshot ────────────────
+    original_qty:            Mapped[Decimal|None]       = mapped_column(Numeric(15, 3))
+    original_rate:           Mapped[Decimal|None]       = mapped_column(Numeric(15, 2))
+    original_value:          Mapped[Decimal|None]       = mapped_column(Numeric(15, 2))
+    fifo_snapshot:           Mapped[dict|None]          = mapped_column(JSON)
+
+    # ── Reversal linkage (cancellation rows only) ────
+    reversal_of_movement_id: Mapped[int|None]           = mapped_column(
+                                 ForeignKey("stock_transactions.id", ondelete="SET NULL"))
+    reversal_type:           Mapped[ReversalType|None]  = mapped_column(SAEnum(ReversalType))
+
+    # ── Document linkage ─────────────────────────────
+    invoice_id:              Mapped[int|None]           = mapped_column(ForeignKey("invoices.id"))
+    reason:                  Mapped[str|None]           = mapped_column(Text)
+    txn_date:                Mapped[date]               = mapped_column(Date, nullable=False)
+    created_by:              Mapped[int|None]           = mapped_column(ForeignKey("users.id"))
+    created_at:              Mapped[datetime]           = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    stock_item: Mapped[StockItem]               = relationship(back_populates="transactions")
+    reversed_by:Mapped["StockTransaction|None"] = relationship(
+                    "StockTransaction",
+                    foreign_keys="[StockTransaction.reversal_of_movement_id]",
+                    primaryjoin="StockTransaction.id==StockTransaction.reversal_of_movement_id",
+                    uselist=False,
+                    overlaps="stock_item")
+
+
+# ── Inventory FIFO Consumption ────────────────────────────────
+# Replaces: SaleFifoAllocation (migration 08)
+# One row per FIFO lot consumed per sale item.
+# Written at sale_out posting time; read at sale_cancel_in time.
+# CASCADE DELETE ensures rows are removed when sale txn is deleted (edit path).
+
+class InventoryFifoConsumption(Base):
+    __tablename__ = "inventory_fifo_consumption"
+    __table_args__ = (
+        Index("ix_fifo_cons_movement",  "movement_id"),
+        Index("ix_fifo_cons_layer",     "purchase_layer_id"),
+        Index("ix_fifo_cons_invoice",   "invoice_id"),
+        Index("ix_fifo_cons_item",      "invoice_item_id"),
+        Index("ix_fifo_cons_tenant",    "tenant_id"),
+    )
+
+    id:                Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:         Mapped[int]      = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    movement_id:       Mapped[int]      = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
+    invoice_id:        Mapped[int|None] = mapped_column(ForeignKey("invoices.id",      ondelete="SET NULL"))
+    invoice_item_id:   Mapped[int|None] = mapped_column(ForeignKey("invoice_items.id", ondelete="SET NULL"))
+    purchase_layer_id: Mapped[int]      = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
+    consumed_qty:      Mapped[Decimal]  = mapped_column(Numeric(15, 3), nullable=False)
+    consumed_rate:     Mapped[Decimal]  = mapped_column(Numeric(15, 2), nullable=False)
+    consumed_value:    Mapped[Decimal]  = mapped_column(Numeric(15, 2), nullable=False)
+    created_at:        Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 # ── Supplier ──────────────────────────────────────────────────
@@ -549,38 +653,3 @@ class SupplierAdvance(Base):
         primaryjoin="and_(SupplierAdvance.tenant_id==Supplier.tenant_id, SupplierAdvance.supplier_mobile==Supplier.mobile)",
         foreign_keys="[SupplierAdvance.tenant_id, SupplierAdvance.supplier_mobile]",
         overlaps="advances,supplier")
-
-
-# ── Sale FIFO Allocation (per-lot consumption snapshot) ───────
-#
-# Each row records exactly how much qty was consumed from one purchase/opening
-# lot when a specific sale OUT transaction was created.
-#
-# Purpose: exact cancellation reversal without any recomputation.
-#   At sale time  → write one row per lot consumed
-#   At cancel time → read these rows; undo each lot_remaining update exactly;
-#                    mirror the original OUT transaction as an IN transaction
-#
-# Design notes:
-#   - sale_txn_id  → the StockTransaction (txn_type=sale) created by _deduct_stock
-#   - lot_txn_id   → the purchase/opening StockTransaction whose lot_remaining was reduced
-#   - qty_consumed → how much was taken from that lot (sum = total sale qty)
-#   - purchase_rate → snapshot of the lot's rate at sale time (immutable after write)
-#   CASCADE DELETE: if the sale transaction row is deleted (e.g. during invoice edit),
-#   the allocation rows are automatically removed.
-
-class SaleFifoAllocation(Base):
-    __tablename__ = "sale_fifo_allocations"
-    __table_args__ = (
-        Index("ix_fifo_alloc_sale_txn", "sale_txn_id"),
-        Index("ix_fifo_alloc_lot_txn",  "lot_txn_id"),
-        Index("ix_fifo_alloc_tenant",   "tenant_id"),
-    )
-
-    id:            Mapped[int]     = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:     Mapped[int]     = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    sale_txn_id:   Mapped[int]     = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
-    lot_txn_id:    Mapped[int]     = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"))
-    qty_consumed:  Mapped[Decimal] = mapped_column(Numeric(15, 3), nullable=False)
-    purchase_rate: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    created_at:    Mapped[datetime]= mapped_column(DateTime(timezone=True), default=datetime.utcnow)
