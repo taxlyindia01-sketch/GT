@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy import (
     String, Integer, Numeric, Boolean, Date, DateTime,
     ForeignKey, Text, Enum as SAEnum, UniqueConstraint,
-    Index, event
+    Index, event, JSON
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base
@@ -81,6 +81,18 @@ class StockTxnType(str, enum.Enum):
     sale       = "sale"
     adjustment = "adjustment"
     opening    = "opening"
+
+class StockMovementType(str, enum.Enum):
+    purchase_in          = "purchase_in"
+    sale_out             = "sale_out"
+    purchase_cancel_out  = "purchase_cancel_out"
+    sale_cancel_in       = "sale_cancel_in"
+    opening              = "opening"
+    adjustment           = "adjustment"
+
+class ReversalType(str, enum.Enum):
+    purchase_cancel = "purchase_cancel"
+    sale_cancel     = "sale_cancel"
 
 
 # ── Tenant ───────────────────────────────────────────────────
@@ -384,20 +396,57 @@ class StockTransaction(Base):
         Index("ix_stock_txn_date", "tenant_id", "txn_date"),
     )
 
-    id:            Mapped[int]           = mapped_column(Integer, primary_key=True, autoincrement=True)
-    tenant_id:     Mapped[int]           = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
-    stock_item_id: Mapped[int]           = mapped_column(ForeignKey("stock_items.id"))
-    txn_type:      Mapped[StockTxnType]  = mapped_column(SAEnum(StockTxnType))
-    qty:           Mapped[Decimal]       = mapped_column(Numeric(15, 3), nullable=False)  # +in / -out
-    purchase_rate: Mapped[Decimal|None]  = mapped_column(Numeric(15, 2))                  # for FIFO lots
-    invoice_id:    Mapped[int|None]      = mapped_column(ForeignKey("invoices.id"))
-    reason:        Mapped[str|None]      = mapped_column(Text)
-    txn_date:      Mapped[date]          = mapped_column(Date, nullable=False)
-    lot_remaining: Mapped[Decimal|None]  = mapped_column(Numeric(15, 3))                  # FIFO lot balance
-    created_by:    Mapped[int|None]      = mapped_column(ForeignKey("users.id"))
-    created_at:    Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    id:                      Mapped[int]                    = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:               Mapped[int]                    = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"))
+    stock_item_id:           Mapped[int]                    = mapped_column(ForeignKey("stock_items.id"))
+    txn_type:                Mapped[StockTxnType]           = mapped_column(SAEnum(StockTxnType))
+    movement_type:           Mapped[StockMovementType]      = mapped_column(SAEnum(StockMovementType), nullable=False)
+    qty:                     Mapped[Decimal]                = mapped_column(Numeric(15, 3), nullable=False)  # +in / -out
+    purchase_rate:           Mapped[Decimal|None]           = mapped_column(Numeric(15, 2))                  # for FIFO lots
+    invoice_id:              Mapped[int|None]               = mapped_column(ForeignKey("invoices.id"))
+    reason:                  Mapped[str|None]               = mapped_column(Text)
+    txn_date:                Mapped[date]                   = mapped_column(Date, nullable=False)
+    lot_remaining:           Mapped[Decimal|None]           = mapped_column(Numeric(15, 3))                  # FIFO lot balance
+    # Immutable snapshot columns (set at posting time, never updated)
+    original_qty:            Mapped[Decimal|None]           = mapped_column(Numeric(15, 3))
+    original_rate:           Mapped[Decimal|None]           = mapped_column(Numeric(15, 2))
+    original_value:          Mapped[Decimal|None]           = mapped_column(Numeric(15, 2))
+    # Reversal linkage
+    reversal_of_movement_id: Mapped[int|None]               = mapped_column(ForeignKey("stock_transactions.id", ondelete="SET NULL"))
+    reversal_type:           Mapped[ReversalType|None]      = mapped_column(SAEnum(ReversalType), nullable=True)
+    # FIFO allocation snapshot
+    fifo_snapshot:           Mapped[dict|None]              = mapped_column(JSON, nullable=True)
+    created_by:              Mapped[int|None]               = mapped_column(ForeignKey("users.id"))
+    created_at:              Mapped[datetime]               = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     stock_item: Mapped[StockItem] = relationship(back_populates="transactions")
+
+
+# ── Inventory FIFO Consumption ────────────────────────────────
+
+class InventoryFifoConsumption(Base):
+    __tablename__ = "inventory_fifo_consumption"
+    __table_args__ = (
+        Index("ix_fifo_cons_movement",  "movement_id"),
+        Index("ix_fifo_cons_layer",     "purchase_layer_id"),
+        Index("ix_fifo_cons_invoice",   "invoice_id"),
+        Index("ix_fifo_cons_tenant",    "tenant_id"),
+    )
+
+    id:                Mapped[int]      = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tenant_id:         Mapped[int]      = mapped_column(ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
+    # The sale_out / purchase_cancel_out StockTransaction this row belongs to
+    movement_id:       Mapped[int]      = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"), nullable=False)
+    # Business document linkage
+    invoice_id:        Mapped[int|None] = mapped_column(ForeignKey("invoices.id", ondelete="SET NULL"))
+    invoice_item_id:   Mapped[int|None] = mapped_column(ForeignKey("invoice_items.id", ondelete="SET NULL"))
+    # The purchase/opening IN lot that was consumed
+    purchase_layer_id: Mapped[int]      = mapped_column(ForeignKey("stock_transactions.id", ondelete="CASCADE"), nullable=False)
+    # Consumption detail (immutable snapshot)
+    consumed_qty:      Mapped[Decimal]  = mapped_column(Numeric(15, 3), nullable=False)
+    consumed_rate:     Mapped[Decimal]  = mapped_column(Numeric(15, 2), nullable=False)
+    consumed_value:    Mapped[Decimal]  = mapped_column(Numeric(15, 2), nullable=False)  # = consumed_qty * consumed_rate
+    created_at:        Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
 
 # ── Supplier ──────────────────────────────────────────────────
