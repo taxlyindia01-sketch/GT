@@ -17,6 +17,7 @@ from models import (
     Invoice, InvoiceItem, Customer, Payment,
     CashEntry, StockItem, StockTransaction, SupplierInvoice,
 )
+from sqlalchemy import cast, String as SAString
 from utils.auth import get_current_user_payload
 from utils.business import current_fy, fifo_valuation, summarise_cash, SFT_THRESHOLD
 
@@ -427,6 +428,34 @@ async def itemwise_report(
 
 import re
 
+class _TxnProxy:
+    """
+    Wraps a StockTransaction ORM row and safely accesses only the columns
+    that exist in the ORIGINAL database schema.  This prevents crashes when
+    models/__init__.py has been updated with new columns (movement_type etc.)
+    but the Alembic/SQL migration has not yet been run on the live database.
+    """
+    __slots__ = ('id','qty','purchase_rate','txn_type','reason',
+                 'txn_date','invoice_id','lot_remaining')
+
+    def __init__(self, t):
+        self.id            = t.id
+        self.qty           = t.qty
+        self.purchase_rate = t.purchase_rate
+        self.reason        = t.reason
+        self.txn_date      = t.txn_date
+        self.invoice_id    = t.invoice_id
+        self.lot_remaining = t.lot_remaining
+        # txn_type: handle both enum object and plain string
+        tt = t.txn_type
+        self.txn_type      = tt  # pass through; _txn_type_label handles both
+
+
+def _safe_txns(rows) -> list:
+    """Wrap raw ORM rows in _TxnProxy to ensure only safe attributes are used."""
+    return [_TxnProxy(r) for r in rows]
+
+
 def _parse_reason(reason: str) -> tuple:
     """
     Parse t.reason to identify the invoice reference.
@@ -464,6 +493,19 @@ def _parse_reason(reason: str) -> tuple:
     m = re.match(r'Edit Reversal\s*[\u2014\-]+\s*Invoice\s+(\d+)', r, re.IGNORECASE)
     if m:
         return ('cancelled_id', int(m.group(1)))
+    # Inventory Engine v2: "Cancellation IN — Invoice INV-1-0001"
+    m = re.match(r'Cancellation\s+IN\s*[\u2014\-]+\s*Invoice\s+(.+)', r, re.IGNORECASE)
+    if m:
+        val = m.group(1).strip()
+        return ('cancelled_invno', val)
+    # Inventory Engine v2: "Cancellation OUT — Purchase Invoice GO/2025-2"
+    m = re.match(r'Cancellation\s+OUT\s*[\u2014\-]+\s*Purchase Invoice\s+(.+)', r, re.IGNORECASE)
+    if m:
+        return ('supplier_invno', m.group(1).strip())
+    # Inventory Engine v2: "Sale — Invoice INV-1-0001"
+    m = re.match(r'Sale\s*[\u2014\-]+\s*Invoice\s+(INV-[\w\-]+)', r, re.IGNORECASE)
+    if m:
+        return ('sale_invno', m.group(1).strip())
     return ('none', None)
 
 
@@ -527,12 +569,27 @@ async def fifo_report(
     db:        AsyncSession   = Depends(get_db),
 ):
     """
-    FIFO Stock Valuation — v29 with corrected invoice resolution.
-
-    Handles the case where StockTransaction.invoice_id is always NULL and the
-    invoice reference is stored in t.reason as a human-readable string.
-    Deduplication, party resolution, and cancelled-adjustment value_in are all fixed.
+    FIFO Stock Valuation.
+    Handles reason-based invoice resolution (invoice_id is always NULL in this system).
     """
+    import traceback
+    from fastapi import HTTPException as _HTTPException
+    try:
+        return await _fifo_report_impl(from_date, to_date, as_of, payload, db)
+    except Exception as exc:
+        tb = traceback.format_exc()
+        # Return structured error so frontend shows meaningful message
+        raise _HTTPException(status_code=500,
+            detail=f"FIFO report error: {type(exc).__name__}: {exc}\n{tb[-800:]}")
+
+
+async def _fifo_report_impl(
+    from_date: Optional[date],
+    to_date:   Optional[date],
+    as_of:     Optional[date],
+    payload:   dict,
+    db:        AsyncSession,
+):
     tenant_id = payload["tenant_id"]
     cutoff    = as_of or to_date or date.today()
 
@@ -557,7 +614,7 @@ async def fifo_report(
     stocks_result = await db.execute(
         select(StockItem).where(
             StockItem.tenant_id == tenant_id,
-            StockItem.category  != "Polish Charges",
+            cast(StockItem.category, SAString) != 'Polish Charges',
             StockItem.is_active == True,
         ).order_by(StockItem.category, StockItem.purity, StockItem.description)
     )
@@ -571,6 +628,10 @@ async def fifo_report(
         cat  = stock.category.value if hasattr(stock.category, 'value') else str(stock.category)
         unit = stock.unit.value     if hasattr(stock.unit,     'value') else str(stock.unit)
 
+        # Select only original-schema columns to avoid "column does not exist"
+        # errors when the model has been updated but the DB migration not run.
+        from sqlalchemy import text as _sa_text, Column as _Col
+        from sqlalchemy import literal_column as _lit
         all_txns_result = await db.execute(
             select(StockTransaction)
             .where(
@@ -579,7 +640,9 @@ async def fifo_report(
             )
             .order_by(StockTransaction.txn_date, StockTransaction.id)
         )
-        txns = _dedup_txns(all_txns_result.scalars().all())
+        raw_txns = all_txns_result.scalars().all()
+        # Build safe proxy objects using only original-schema attributes
+        txns = _dedup_txns(_safe_txns(raw_txns))
 
         fifo_batches:   list    = []
         qty_in_total    = Decimal("0")

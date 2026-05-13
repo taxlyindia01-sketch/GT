@@ -11,7 +11,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, cast, String as SAString
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -23,8 +23,7 @@ from database import get_db
 from models import (
     Invoice, InvoiceItem, Customer, Payment,
     CashEntry, Advance, AdvanceAllocation, StockItem, StockTransaction,
-    Supplier, SupplierInvoice, SupplierInvoiceItem, SupplierPayment, SupplierAdvance,
-    CategoryEnum,
+    Supplier, SupplierInvoice, SupplierInvoiceItem, SupplierPayment, SupplierAdvance
 )
 from utils.auth import get_current_user_payload
 from utils.business import current_fy, SFT_THRESHOLD
@@ -1314,7 +1313,7 @@ async def export_fifo_excel(
     stocks_r = await db.execute(
         select(StockItem).where(
             StockItem.tenant_id == tenant_id,
-            StockItem.category  != CategoryEnum.PolishCharges,
+            cast(StockItem.category, SAString) != 'Polish Charges',
             StockItem.is_active == True,
         ).order_by(StockItem.category, StockItem.purity, StockItem.description)
     )
